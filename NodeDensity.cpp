@@ -5,7 +5,7 @@
 using namespace ogdf;
 
 
-//BondingBoxSize::BondingBoxSize(const String &funcname, GridGraph &GG){m_bondingBox = IPoint(INT_MAX,INT_MAX) ;}
+//BoundingBoxSize::BoundingBoxSize(const String &funcname, GridGraph &GG){m_BoundingBox = IPoint(INT_MAX,INT_MAX) ;}
 /**/ //INT_MIN std::
 
 //! computes energy for the layout at the beginning of the optimization process

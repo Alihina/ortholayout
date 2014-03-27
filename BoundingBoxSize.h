@@ -1,12 +1,12 @@
-#ifndef BONDING_BOX_SIZE
-#define BONDING_BOX_SIZE
+#ifndef Bounding_BOX_SIZE
+#define Bounding_BOX_SIZE
 
 #include <Grid_EnergyFunction.h>
 #include <ogdf/basic/geometry.h>
 
 namespace ogdf {
 
-	class BondingBoxSize: public Grid_EnergyFunction {
+	class BoundingBoxSize: public Grid_EnergyFunction {
 	public:
 		//! computes energy for the layout at the beginning of the optimization process
 		void computeEnergy()=0;
