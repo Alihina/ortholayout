@@ -17,6 +17,7 @@ namespace ogdf {
 		//! computes the energy of the configuration with the considered testvertex and sets the value of m_candidateEnergy.
 		void compCandEnergy()=0;//will be continued if there is enough time left
 
+
 	private: 
 		int OutlineArea(IPolyline Boundingbox,IPolyline Outline);//this function implements Larisa
 

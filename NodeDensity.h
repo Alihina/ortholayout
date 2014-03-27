@@ -1,7 +1,7 @@
 #ifndef NODE_DENSITY
 #define NODE_DENSITY
 
-#include <Grid_EnergyFunction.h>
+#include "Grid_EnergyFunction.h"
 
 namespace ogdf {
 

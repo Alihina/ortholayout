@@ -11,16 +11,28 @@ using namespace ogdf;
 
 //! computes energy for the layout at the beginning of the optimization process
 void BondingBoxSize::computeEnergy()
-{	IPolyline Box;      
+{
+	IPolyline Box;      
     Box = m_GG.getBox();
-	m_energy = (abs(Box.back().m_x-Box.front().m_x)+1)*(abs(Box.back().m_y-Box.front().m_y)+1);//Fläche der Box
+	m_energy = BondingBoxSize::calcBoxArea(Box);//Fläche der Box
 }
 
 
 //! computes the energy of the configuration with the considered testvertex and sets the value of m_candidateEnergy.
 void BondingBoxSize::compCandEnergy()
-{m_candidateEnergy=m_GG.boxarea();};
+{
+	IPolyline Box;      
+    Box = m_GG.getBox();
+	m_candidateEnergy = BondingBoxSize::calcBoxArea(Box);
+}
 
-void BondingBoxSize::internalCandidateTaken() {;}
+void BondingBoxSize::internalCandidateTaken() 
+{
+	;
+}
 
-
+double BondingBoxSize::calcBoxArea(IPolyline &Box)
+{
+	return (abs(Box.back().m_x-Box.front().m_x)+1)
+		*(abs(Box.back().m_y-Box.front().m_y)+1);
+}

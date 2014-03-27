@@ -10,7 +10,7 @@ namespace ogdf {
 	public:
 		//! computes energy for the layout at the beginning of the optimization process
 		void computeEnergy()=0;
-
+		static double calcBoxArea(IPolyline &Box);
 	protected:
 
 		//! changes the data of a specific energy function if the candidate was taken
