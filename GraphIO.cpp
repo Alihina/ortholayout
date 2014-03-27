@@ -1400,6 +1400,19 @@ void GraphIO::drawSelected() {
 
 void GraphIO::drawGraph() { // draws the Graph 
 if (GridMode){ //first draft: display nodes of first layer onlys
+		
+	const Graph &G = currentGG.constGraph(); //Get the Graph underlying GA
+	node v;
+	edge e;
+
+	if (G.numberOfNodes() == 0){
+		std::cout << "ERROR: attempting to draw empty graph" << std::endl;
+		throw -1;
+	}
+	//std::cout << "drawing " << G.numberOfNodes() << " nodes" << std::endl;
+
+	forall_edges(e,G) drawEdge(currentGG,e,ealpha[e]);
+	forall_nodes(v,G) drawNode(currentGG,v,valpha[v]);
 
 }else{
 	GraphAttributes &GA = currentGA;
