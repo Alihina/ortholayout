@@ -18,9 +18,7 @@ void NodeDensity::computeEnergy()
 //! computes the energy of the configuration with the considered testvertex and sets the value of m_candidateEnergy.
 void NodeDensity::compCandEnergy()
 {
-	IPolyline Box;      
-    Box = m_GG.getBox();
-	m_candidateEnergy=0;
+	m_candidateEnergy=NodeDensity::OutlineArea(m_GG.getBox(),m_GG.getOutline())/m_GG.numberOfNodes();;
 }
 
 void NodeDensity::internalCandidateTaken() {
