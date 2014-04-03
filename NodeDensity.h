@@ -5,7 +5,7 @@
 #include <ogdf/basic/geometry.h>
 
 namespace ogdf {
-	int outlineArea(IPolyline Boundingbox, IPolyline Outline);
+
 	class NodeDensity: public Grid_EnergyFunction {
 	public:
 		NodeDensity(const String &funcname, GridGraph &GG);
