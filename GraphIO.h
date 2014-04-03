@@ -10,6 +10,7 @@
 #include <ogdf/internal/energybased/IntersectionRectangle.h>
 #include <ogdf/internal/energybased/AdjacencyOracle.h>
 #include <GridGraph.h>
+#include <Lattice.h>
 #if defined(_MSC_VER)
 #include <SDL.h>
 #else
@@ -120,6 +121,7 @@ public:
 	
 private:
 //===================== PRIVATE MEMBER FUNCTIONS ==========================
+	
 	bool handleEvents(); //returns true when programm is to be terminated
 	void OnKeydown();
 	void OnKeyUp();
@@ -141,8 +143,13 @@ private:
 	void addParents(node v, const NodeArray<List<node>> &parentarray, List<node> &found);
 
 	double GraphIO::dist(DPoint p1,DPoint p2){return (p1-p2).norm();};
-	double GraphIO::dist(node v, DPoint p2){return dist(DPoint(currentGA.x(v),currentGA.y(v)),p2);};
-	double GraphIO::dist(DPoint p1, node v){return dist(p1, DPoint(currentGA.x(v),currentGA.y(v)));};
+	double GraphIO::dist(node v, DPoint p2){
+		if(GridMode) return dist(DPoint(currentGG.dx(v),currentGG.dy(v)),p2);
+		return dist(DPoint(currentGA.x(v),currentGA.y(v)),p2);
+	};
+	double GraphIO::dist(DPoint p1, node v){
+		if (GridMode) return dist(p1, DPoint(currentGG.dx(v),currentGG.dy(v)));
+		return dist(p1, DPoint(currentGA.x(v),currentGA.y(v)));};
 
 	node getNode(int x, int y); //select node at view coordinates x,y
 	void initNodemove();	
@@ -181,12 +188,15 @@ private:
 	void drawEdge(GraphAttributes &GA, edge e, int alpha);	
 	void drawNode(GridGraph &GG, node v, int alpha);
 	void drawEdge(GridGraph &GG, edge e, int alpha);
+	void drawOutline(IPolyline outline, DPoint pos);
 
 	void clrscr();
 
 	void recalcGscale(); ///> Calculate the Scale-to-fit factor for the current Graph&Window
 	DPoint g2v(DPoint g); //convert global coordinates to Onscreen coordinates
 	DPoint v2g(DPoint v); //convert Onscreen coordinates to global coordinates
+	DPoint g2v(IPoint g); //convert global coordinates to Onscreen coordinates
+	DPoint v2g(IPoint v); //convert Onscreen coordinates to global coordinates
 	double g2v(double a); //convert global length to Onscreen coordinates
 	double v2g(double a); //convert Onscreen length to global coordinates
 	
@@ -197,7 +207,7 @@ private:
 	SDL_Renderer *rend;
 	SDL_Event event;
 
-    
+    Lattice testLattice;
 	const Graph *m_pGraph;
 	const GraphAttributes *m_pGA;
 	const GridGraph *m_pGG;
@@ -250,8 +260,8 @@ private:
 	int winh; //window height
 	
 	static const int border = 110; //size in percent of the Window in relation to graphsize for Graph Scale-to-fit variable
-	static const int gridScale = 32; //size of the Grid
-	static const int nodesize = 10;
+	static const int gridScale = 1; //size of the Grid
+	static const double nodesize;
 };
 
 

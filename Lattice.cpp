@@ -3,6 +3,13 @@
 #include <Lattice.h>
 
 
+Lattice::Lattice(){
+	nodePos.init(*this,IPoint(-1,-1));
+	height.init(*this,-1);
+	start.init(*this,-1);
+	end.init(*this,-1);
+}
+
 int Lattice::getHeight(IPoint p1, IPoint p2){
 	if (p1.m_x == p2.m_x) return p1.m_x;
 	if (p1.m_y == p2.m_y) return p1.m_y;
@@ -30,32 +37,78 @@ ListIterator<edge> Lattice::findBT(List<edge> &edgelist, int pos){
 	return it;
 }
 
-edge Lattice::connect(node v1, node v2){
-	edge e = newEdge(v1,v2);
+char Lattice::adjPos(node v, edge e){
+	node v1 = e->source();
+	node v2 = e->target();
 	IPoint p1 = nodePos[v1];
 	IPoint p2 = nodePos[v2];
-	int pos = getHeight(p1, p2);
-	height[e] = pos;
-	if (p1.m_x == p2.m_x){
-		start[e] = min(p1.m_y, p2.m_y);
-		end[e] = max(p1.m_y, p2.m_y);
-		hor.insertAfter(e ,findST(hor, pos));	
+	char val = -1;
+	if (v == v1){
+		if (p1.m_x == p2.m_x){ //edge is vertical
+			if (p1.m_y > p2.m_y) val = 3;
+			else val = 7;
+		}else{ //edge is horizontal
+			if (p1.m_x > p2.m_x) val = 5;
+			else val = 1;
+		}
 	}
-	if (p1.m_y == p2.m_y){
-		start[e] = min(p1.m_x, p2.m_x);
-		end[e] = max(p1.m_x, p2.m_x);
-		vert.insertAfter(e ,findST(vert, pos));
+	if (v == v2){
+		if (p1.m_x == p2.m_x){ //edge is vertical
+			if (p1.m_y > p2.m_y) val = 0;
+			else val = 4;
+		}else{ //edge is horizontal
+			if (p1.m_x > p2.m_x) val = 2;
+			else val = 6;
+		}
 	}
+	return val;
+}
+
+void Lattice::adjSort(node v, adjEntry newAdj){
+	List<adjEntry> adjList;
+	this->adjEntries(v,adjList);
+	if (adjList.size() == 1) return;	
+	adjEntry pred = adjList.popBackRet(); //remove the newly added AdjEntry
+	char newPos = adjPos(v,newAdj->theEdge());
+	char predPos = 8;
+	while(adjList.empty() == false){
+		pred = adjList.popBackRet();
+		predPos = adjPos(v,pred->theEdge());
+		if (predPos < newPos){
+			this->moveAdjAfter(newAdj,pred);
+			return;
+		}
+	}
+	this->moveAdjBefore(newAdj,pred);
+}
+
+edge Lattice::connect(node v1, node v2){
+	edge e = this->searchEdge(v1,v2);
+	if (e == NULL) e = this->searchEdge(v2,v1);
+	if (e == NULL) e = newEdge(v1,v2);
+	IPoint p1 = nodePos[v1];
+	IPoint p2 = nodePos[v2];
+	if (v1 == e->source()){
+		adjSort(v1,e->adjSource());
+		adjSort(v2,e->adjTarget());	
+	}else{
+		adjSort(v2,e->adjSource());
+		adjSort(v1,e->adjTarget());	
+	}
+	return e;
 }
 
 node Lattice::getNode(IPoint pos){ 
 	node v;
 	forall_nodes(v,*this){
-		if (nodePos[v] == pos) return v;
+		if (nodePos[v] == pos){
+			return v;
+			std::cout << "NODE EXISTS" << std::endl;
+		}
 	}
-	v = newNode();
-	nodePos[v] = pos;
-	return v;
+	node w = newNode();
+	nodePos[w] = pos;
+	return w;
 }
 
 bool Lattice::isOutside(IPoint pos){
@@ -140,12 +193,12 @@ node Lattice::splitEdge(edge e, int pos){
 	int a = getHeight(p1,p2);
 	height[e1] = a;
 	height[e2] = a;
-	int d = outline.search(e);
+	int d = m_outline.search(e);
 	if ( d != -1){
-		ListIterator<edge> ito = outline.get(d);
-		outline.insertAfter(e2, ito);
-		outline.insertAfter(e1, ito);
-		outline.del(ito);
+		ListIterator<edge> ito = m_outline.get(d);
+		m_outline.insertAfter(e2, ito);
+		m_outline.insertAfter(e1, ito);
+		m_outline.del(ito);
 	}
 	if (p1.m_y == p2.m_y){
 		ListIterator<edge> ite = vert.get(vert.search(e));
@@ -162,19 +215,22 @@ node Lattice::splitEdge(edge e, int pos){
 		hor.del(ite);
 	}
 	delEdge(e);
+	return newV;
 }
 
 
 bool Lattice::onOutline(node v){
-	bool val = false;
 	edge e;
 	forall_adj_edges(e,v){
-		if(outline.search(e) !=-1) val = true;
+		if(m_outline.search(e) !=-1) return true;
 	}
-	return val;
+	return false;
 
 }
+
+
 int Lattice::getRot(edge e1, edge e2){
+	if (e1 == NULL) return 0;
 	node v1 = e1->source();
 	node v2 = e1->target();
 	node w1 = e2->source();
@@ -206,17 +262,18 @@ int Lattice::getRot(node v1, node v2){
 	int rot = 0;
 	ListConstIterator<edge> itBegin;
 	ListConstIterator<edge> itEnd;
-	forall_listiterators(edge,it,outline){
+	forall_listiterators(edge,it,m_outline){
 		if ((*it)->source() == v1) itBegin = it;
 		if ((*it)->source() == v2){ 
 			itEnd = it; //the one past last edge that will be looked at
 			break;
 		}
 	}	
+	if (!itBegin.valid()) return 0;
 	edge e1;
 	edge e2 = *itBegin;
 	for(ListConstIterator<edge> ite = itBegin; ite != itEnd; ite = ite.succ()){
-		if (!(ite.valid())) ite = outline.begin();
+		if (!(ite.valid())) ite = m_outline.begin();
 		e1 = e2;
 		e2 = *ite;
 		int delta = getRot(e1,e2);
@@ -225,9 +282,9 @@ int Lattice::getRot(node v1, node v2){
 		if (delta == 2 | delta == -2){			
 			ListConstIterator<edge> it0;
 			if (ite.pred().valid()) it0 = ite.pred();
-			else it0 = outline.rbegin();
+			else it0 = m_outline.rbegin();
 			if (it0.pred().valid()) it0 = it0.pred();
-			else it0 = outline.rbegin();
+			else it0 = m_outline.rbegin();
 			IPoint p1 = nodePos[(*it0)->source()];
 			IPoint p2 = nodePos[(*it0)->target()];
 			if (p1.m_x == p2.m_x){
@@ -250,6 +307,7 @@ int Lattice::getRot(node v1, node v2){
 		} // delta 2
 		rot += delta;
 	}
+	return rot;
 }
 void Lattice::flip(List<edge> &edges){
 	forall_listiterators(edge, it, edges) reverseEdge(*it);
@@ -258,7 +316,7 @@ void Lattice::flip(List<edge> &edges){
 
 void Lattice::addToOutline(List<edge> &newOutline){
 	ListIterator<edge> itStart, itEnd;
-	forall_nonconst_listiterators(edge, it1, outline){
+	forall_nonconst_listiterators(edge, it1, m_outline){
 		if ((*it1)->source() == newOutline.front()->source()) {
 			itStart = it1;
 		}
@@ -267,135 +325,150 @@ void Lattice::addToOutline(List<edge> &newOutline){
 		}
 	}
 	while(newOutline.empty() == false){
-		outline.insertBefore(newOutline.popFrontRet(),itStart);
+		if (itStart.valid()) m_outline.insertBefore(newOutline.popFrontRet(),itStart);
+		else m_outline.pushFront(newOutline.popFrontRet());
 	}
 	for(ListIterator<edge> it2 = itStart; it2 != itEnd.succ(); it2 = it2.succ()){
-		outline.del(it2); //this should work (?)
+		m_outline.del(it2); //this should work (?)
+	}	
+}
+
+void Lattice::addToOutlineSimple(List<edge> &newOutline){
+	ListIterator<edge> itStart, itEnd;
+	forall_nonconst_listiterators(edge, it1, m_outline){
+		if ((*it1)->target() == newOutline.front()->source()) {
+			itStart = it1;
+			break;
+		}
 	}
-	
+	while(newOutline.empty() == false){
+		m_outline.insertAfter(newOutline.popBackRet(),itStart);
+	}
 }
 
 edge Lattice::getprevEdge(node v){
-	forall_listiterators(edge,it,outline){
+	forall_listiterators(edge,it,m_outline){
 		if ((*it)->target() == v) return (*it);
 	}
 	return NULL;
 }
 
-void Lattice::addLine(IPolyline line){
-	bool outside = isOutside(line.front());
-	edge prevEdge = NULL;
+void Lattice::merge(node v1, node v2){
+	edge e = NULL;
+	e = this->searchEdge(v1,v2);
+	if (e == NULL) e = connect(v1,v2);
+	OGDF_ASSERT(nodePos[v1] == nodePos[v2]);
+
+}
+
+void Lattice::addLine(IPolyline line) {
 	IPoint p1;
 	IPoint p2 = line.popFrontRet();
-	ListIterator<IPoint> it;
-	List<edge> newOutline;
-	int rot = 0;
-	forall_listiterators(IPoint, it, line){
+	ListIterator<IPoint> it;	
+		forall_listiterators(IPoint, it, line){
 		p1 = p2;
 		p2 = *it;
 		int height = getHeight(p1,p2);
 		node vSrc = getNode(p1);
-		node vTrg = getNode(p2);
+		node vTrg = getNode(p2);		
 		List<edge> crossings = edges(p1, p2);
 		ListIterator<edge> ite = crossings.rend(); // I hope this does what I think it does
 		node v1 = vSrc;
 		node v2;
 		do{
-			ite = ite.succ();
+			if (ite.valid()) ite = ite.succ();
 			if (ite.valid()) v2 = splitEdge(*ite,height);
 			else v2 = vTrg;
+			std::cout << " connect:" << nodePos[v1] << "->" << nodePos[v2] << "#nodes: " << this->numberOfNodes(); 
 			edge e = connect(v1,v2);
-			//if (nodePos[v1] == nodePos[v2]) merge(v1,v2);
-			if (outside){
-				rot += getRot(prevEdge, e);
-				newOutline.pushBack(e);
-				prevEdge = e;
-			}
-			
-			if (onOutline(v2)){
-				if (outside){					
-					if(onOutline(newOutline.front()->source())){
-						rot += getRot(v2,newOutline.front()->source());
-						if (rot == -4)	flip(newOutline);											
-						addToOutline(newOutline); //this empties newOutline
-					}else{
-						ListIterator<edge> it2;
-						List<edge> rnewOutline;						
-						forall_rev_listiterators(edge, ite2, newOutline){
-							edge e2 = *ite2;
-							rnewOutline.pushBack(connect(e2->target(), e2->source()));
-						}
-						newOutline.concFront(rnewOutline);
-						addToOutline(newOutline);
-					}
-					outside = false;
-				}else{
-					outside = true;
-					prevEdge = getprevEdge(v2);
-				}
-			}
-
 		}while(ite.valid());
+		std::cout << "  done"  << std::endl;
 	}
-	if (outside){
-		ListIterator<edge> it2;
-		List<edge> rnewOutline;						
-		forall_rev_listiterators(edge, ite2, newOutline){
-			edge e2 = *ite2;
-			rnewOutline.pushBack(connect(e2->target(), e2->source()));
-		}
-		newOutline.conc(rnewOutline);
-		addToOutline(newOutline);
-	}
-
+	m_pOutline = CalcOutline();
 };
 
-//void Lattice::removeLine(IPolyline line){
-//	bool outside = false;
-//	edge oldEdge = NULL;
-//	edge e = NULL;
-//	IPoint p1;
-//	IPoint p2 = line.popFrontRet();
-//	ListIterator<IPoint> it;
-//	List<edge> newOutline;
-//	node vStart = NULL;
-//	node vEnd = NULL;
-//
-//	forall_listiterators(IPoint, it, line){
-//		p1 = p2;
-//		p2 = *it;
-//		int height = getHeight(p1,p2);
-//		node v1 = getNode(p1);
-//		node v2 = getNode(p2);				
-//		e = NULL;
-//		e = searchEdge(v1,v2);
-//		if (e == NULL) e = searchEdge(v2,v1);
-//		if (outline.search(e) != -1){
-//			if (outside == false){			
-//				vStart = v1;
-//				outside = true;
-//			}
-//		}else{
-//			if (outside == true){
-//				vEnd = v2;
-//				outside = false;
-//				if (vEnd == e->source()){
-//					node temp = vEnd;
-//					vEnd = vStart;
-//					vStart = temp;
-//				}
-//				edge e2;
-//				node w1,w2;
-//				for(;;){
-//					adjEntry adj = e2->adjTarget();
-//					adj = adj->cyclicPred();
-//
-//					forall_adj(adj,w2){
-//
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//}
+edge Lattice::getRight(edge e){
+	/*OGDF_ASSERT(e_in->target() == w);*/
+	node w = e->target();
+	/*adj,Entry adj;*/
+	adjEntry inc = e->adjTarget();
+	/*forall_adj(adj,w){
+		if (adj->theEdge() == e_in) inc = adj;
+	}*/
+	adjEntry out = inc->cyclicPred();
+	edge e_out = out->theEdge();
+	if (e_out->source() == w) return e_out;
+	else this->reverseEdge(e_out);
+	return e_out;
+}
+void Lattice::removeLine(IPolyline line){
+	edge oldEdge = NULL;
+	edge e = NULL;
+	IPoint p1;
+	IPoint p2 = line.popFrontRet();
+	ListIterator<IPoint> it;
+	List<edge> newOutline;
+	node vStart = NULL;
+	node vEnd = NULL;
+	node v1 = NULL;
+	node v2 = NULL;
+
+	forall_listiterators(IPoint, it, line){
+		p1 = p2;
+		p2 = *it;
+		int height = getHeight(p1,p2);
+		v1 = getNode(p1);
+		v2 = getNode(p2);				
+		e = NULL;
+		e = searchEdge(v1,v2);
+		if (e != NULL){
+			delEdge(e);
+		}
+		e = searchEdge(v2,v1);
+		if (e != NULL){
+			delEdge(e);
+		}//if (e != NULL)
+		 if (v1->indeg() + v1->outdeg() == 0) delNode(v1);
+		 if (v2->indeg() + v2->outdeg() == 0) delNode(v2);
+	}
+	m_pOutline = CalcOutline();
+	std::cout << "line removed" << std::endl;
+}
+IPolyline Lattice::outline(){
+	return m_pOutline;
+}
+
+IPolyline Lattice::CalcOutline(){
+	if (this->empty()) return IPolyline();
+	IPolyline ret;
+	node v,w;
+	w = this->chooseNode();
+	forall_nodes(v,*this){
+		if (nodePos[v].m_y <= nodePos[w].m_y){
+			if (nodePos[v].m_y < nodePos[w].m_y) w = v;
+			else if (nodePos[v].m_x < nodePos[w].m_x){
+				w = v;
+			}			
+		}
+	}
+	//std::cout << "n:" << nodePos[w] << "  ";
+	IPoint tempPos = nodePos[w];
+	tempPos.m_y -= 1;
+	node tempNode = getNode(tempPos);
+	edge tempEdge = connect(tempNode, w);
+	edge e = getRight(tempEdge);
+	ret.pushBack(nodePos[e->source()]);
+	ret.pushBack(nodePos[e->target()]);
+	std::cout << "TERMINUS: " << nodePos[w] << std::endl;
+	bool loop = false;
+	while(e->target() != w){
+		loop = true;
+		std::cout << "[" << nodePos[e->source()] << " -> " << nodePos[e->target()] << "] ";
+		e = getRight(e);
+		ret.pushBack(nodePos[e->target()]);
+	}
+	if (loop) std::cout << std::endl;
+	delNode(tempNode);
+
+	return ret;
+}

@@ -174,7 +174,7 @@ GridGraph::GridGraph(const GridGraph &GG){
 		forall_adj(adj,v1){ //for all adjacent source nodes 
 			node w2 = trgCopy[adj->twinNode()];
 			edge e1 = adj->theEdge();
-			if (w2){ //if w2 is already in GG
+			if (w2 != NULL){ //if w2 is already in GG
 				edge e2 = this->newEdge(v2,w2); //create the new edge
 				ListIterator<edge> ite;
 				m_eOrig[e2] = GG.m_eOrig[e1]; //copy original edge list
@@ -192,6 +192,7 @@ GridGraph::GridGraph(const GridGraph &GG){
 	m_Grid = GG.m_Grid;
 	m_dPos = GG.m_dPos;
 	
+
 };
 
 
@@ -274,6 +275,11 @@ GridGraph& GridGraph::operator=(const GridGraph& GG){
 					m_eCopy[*ite] = e2;
 				}
 				//copy all other edge attributes
+				std::cout << e2 << " ";
+				forall_listiterators(IPoint,it,GG.m_edgeline[e1]){
+					std::cout << "[" << (*it).m_x << ":" << (*it).m_y << "]";
+				}
+				std::cout << std::endl;
 				m_edgeline[e2] = GG.m_edgeline[e1];
 				m_eSpaces[e2] = GG.m_eSpaces[e1];
 				m_eState[e2] = GG.m_eState[e1];				
@@ -283,6 +289,22 @@ GridGraph& GridGraph::operator=(const GridGraph& GG){
 	//copy all general members
 	m_Grid = GG.m_Grid;
 	m_dPos = GG.m_dPos;
+
+	//Debug information
+	adjEntry adj;
+	node v = this->firstNode();
+	std::cout << "adjacent edgelines Copy: " << std::endl;
+	forall_adj(adj,v){
+		IPolyline line = this->edgeline(adj->theEdge());
+		DPolyline dline = this->dedgeline(adj->theEdge());
+		/*std::cout << adj->theNode() << "->" << adj->twinNode() << " = ";*/
+		std::cout << adj->theEdge() << ":  {";
+		forall_listiterators(IPoint,it,line){
+			std::cout << "[" << (*it).m_x << ":" << (*it).m_y << "]";
+		}
+		std::cout << std::endl;
+	}
+
 	return *this;
 }
 
