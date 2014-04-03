@@ -15,7 +15,7 @@ Grid_EnergyFunction(funcname,GG)
 //! computes energy for the layout at the beginning of the optimization process
 void NodeDensity::computeEnergy()
 {  
-	m_energy = NodeDensity::OutlineArea(m_GG.getBox(),m_GG.getOutline())/m_GG.numberOfNodes();
+	m_energy = GridGraph::outlineArea(m_GG.getBox(),m_GG.getOutline())/m_GG.numberOfNodes();
 }
 
 
@@ -24,7 +24,7 @@ void NodeDensity::compCandEnergy()
 {  
 	if (m_GG.getOutline()!=m_Outline)
 	{
-		m_candidateEnergy=NodeDensity::OutlineArea(m_GG.getBox(),m_GG.getOutline())/m_GG.numberOfNodes();
+		m_candidateEnergy=GridGraph::outlineArea(m_GG.getBox(),m_GG.getOutline())/m_GG.numberOfNodes();
 	}
 }
 

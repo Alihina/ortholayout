@@ -451,6 +451,7 @@ void GridGraph::clusterize(int p){};
 
 int GridGraph::outlineArea(IPolyline Boundingbox, IPolyline Outline)
 {
+	return 0; //FIXME
 }
 
 

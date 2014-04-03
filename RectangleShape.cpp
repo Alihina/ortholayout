@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "RectangleShape.h"
 #include "BoundingBoxSize.h"
+#include "GridGraph.h"
 
 using namespace ogdf;
 
@@ -9,7 +10,7 @@ using namespace ogdf;
 //! computes energy for the layout at the beginning of the optimization process
 void RectangleShape::computeEnergy()
 {
-	m_energy = BoundingBoxSize::calcBoxArea(m_GG.getBox())-OutlineArea(m_GG.getBox(), m_GG.getOutline());
+	m_energy = BoundingBoxSize::calcBoxArea(m_GG.getBox())-GridGraph::outlineArea(m_GG.getBox(), m_GG.getOutline());
 }
 
 
