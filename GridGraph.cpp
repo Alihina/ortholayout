@@ -442,14 +442,16 @@ void GridGraph::moveToCluster(node w, node v){ //not quite done! (?)
 	delNode(w);
 
 
-}; 			
+};
 void GridGraph::init(){};
 
 bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror){return false;};
 IPoint GridGraph::getConnection(edge e){return IPoint(0,0);};
 void GridGraph::clusterize(int p){};
 
-
+int GridGraph::outlineArea(IPolyline Boundingbox, IPolyline Outline)
+{
+}
 
 
 

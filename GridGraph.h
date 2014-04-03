@@ -177,6 +177,7 @@ public:
 	void setEdgeline(edge e, IPolyline line){m_edgeline[e] = line;}; // manually set the edgeline without consideration for the Grid	//EIGENTLICH OBSOLET
 	IPolyline &getOutline(){return m_outline;};
 	IPolyline &getOutline(node v){return m_vOutline[v];};
+	static int outlineArea(IPolyline Boundingbox, IPolyline Outline);
 
 	List<GridGraph> &GGList(){return m_GGList;};
 	GridGraph * subGG(node v){return m_vGridGraph[v];};
