@@ -1725,20 +1725,54 @@ void GraphIO::drawOutline(IPolyline outline, DPoint pos){
 		Uint8 oldr, oldg, oldb, olda;
     SDL_GetRenderDrawColor(rend, &oldr, &oldg, &oldb, &olda); //Get current color
 	//SDL_SetRenderDrawColor(rend,40,255,40,255);
-	SDL_SetRenderDrawColor(rend,255,40,40,255);
+	SDL_SetRenderDrawColor(rend,255,0,0,255);
 	/*std::cout << testLattice.numberOfEdges() << std::endl;*/
 	//std::cout << outline.size() << std::endl;
 	
 	DPoint q2 = g2v(outline.front()) + pos;
 	DPoint q1;
 	//std::cout << "drawing outline: " << outline.size() << std::endl;
+	Uint8 inc = 255/outline.size();
+	int count = 0;
 	for(ListIterator<IPoint> it = outline.begin().succ(); it.valid() ; it = it.succ()){ //go through bendpoints
+		count ++;
+		Uint8 ldr, ldg, ldb, lda;
+		SDL_GetRenderDrawColor(rend, &ldr, &ldg, &ldb, &lda); //Get current color
+		SDL_SetRenderDrawColor(rend, ldr-inc, ldg, ldb+inc, lda); //Reset render color to previous value 	
 		q1 = q2;
 		q2 = g2v(*it) + pos;
 		DPoint p1 = q1;
 		DPoint p2 = q2;
 		//std::cout << currentGG.dedgeline(e).front().m_x;
-		int size = 3;
+		double size = g2v(0.05);
+		double off = g2v(0.2);
+		if (p1.m_y == p2.m_y){
+			if (p2.m_x > p1.m_x){ //
+				p1.m_y += off;
+				p2.m_y += off;
+				//p1.m_x -= off;
+				//p2.m_x += off;
+			}else{
+				p1.m_y -= off;
+				p2.m_y -= off;
+				//p1.m_x += off;
+				//p2.m_x -= off;
+			}
+		}else{
+			
+			if (p2.m_y > p1.m_y){
+				p1.m_x -= off;
+				p2.m_x -= off;
+				//p1.m_y -= off;
+				//p2.m_y += off;
+			}else{
+				p1.m_x += off;
+				p2.m_x += off;
+				//p1.m_y += off;
+				//p2.m_y -= off;
+			}
+		}
+
 		if (p1.m_x < p2.m_x) {
 			p1.m_x -= size;
 			p2.m_x += size;
@@ -1755,10 +1789,14 @@ void GraphIO::drawOutline(IPolyline outline, DPoint pos){
 			p2.m_y -= size;
 			p1.m_y += size;
 		}
+
+
+
 		SDL_Rect edgeRect = {p1.m_x, p1.m_y, p2.m_x-p1.m_x, p2.m_y-p1.m_y};
 		/*SDL_Rect edgeRect = {20,20,200,200};*/
 		SDL_RenderFillRect(rend, &edgeRect);
 	}
+	//std::cout << count << std::endl;
 	SDL_SetRenderDrawColor(rend, oldr, oldg, oldb, olda); //Reset render color to previous value 	
 
 }

@@ -19,22 +19,46 @@ int Lattice::getHeight(IPoint p1, IPoint p2){
 
 ListIterator<edge> Lattice::findST(List<edge> &edgelist, int pos){
 	ListIterator<edge> it;
-	ListIterator<edge> value = edgelist.begin();
-	forall_nonconst_listiterators(edge, it, edgelist){
-		if (height[*it] >= pos) return value;
+	ListIterator<edge> value = ListIterator<edge>();
+	//std::cout << "findST: " << pos << std::endl;
+	//forall_nonconst_listiterators(edge, it, edgelist){		
+	//	std::cout << height[*it];
+	//	if (height[*it] >= pos){ std::cout << "RETURN VALUE"<< height[*value];
+	//	std::cout << std::endl;
+	//	value = it;
+	//}
+	ListIterator<edge>();
+	forall_nonconst_listiterators(edge, it, edgelist){		
+		if (height[*it] >= pos) {
+			//std::cout << "FOUND ST: " << height[*it] << std::endl;
+			return value;
+		}
 		value = it;
 	}
-	return it;
+	return value;
 }
 
 ListIterator<edge> Lattice::findBT(List<edge> &edgelist, int pos){
 	ListIterator<edge> it;
-	ListIterator<edge> value = edgelist.begin();
+	ListIterator<edge> value = ListIterator<edge>();
+	//std::cout << "findBT: " << pos << std::endl;
+
+	//forall_nonconst_listiterators(edge, it, edgelist){		
+	//	std::cout << height[*it];				
+	//	value = it;
+	//	if (height[*it] >= pos) std::cout << "RETURN VALUE " << height[*value];
+	//	std::cout << std::endl;
+	//}
+
 	forall_nonconst_listiterators(edge, it, edgelist){
+		//std::cout << height[*it] << std::endl;
 		value = it;
-		if (height[*it] > pos) return value;		
+		if (height[*it] > pos) {
+			//std::cout << "FOUND BT: " << height[*it] << std::endl;
+			return value;		
+		}
 	}
-	return it;
+	return ListIterator<edge>();
 }
 
 char Lattice::adjPos(node v, edge e){
@@ -45,68 +69,89 @@ char Lattice::adjPos(node v, edge e){
 	char val = -1;
 	if (v == v1){
 		if (p1.m_x == p2.m_x){ //edge is vertical
-			if (p1.m_y > p2.m_y) val = 3;
-			else val = 7;
+			if (p1.m_y > p2.m_y) val = 7; //N-out
+			else val = 3; //S-Out
 		}else{ //edge is horizontal
-			if (p1.m_x > p2.m_x) val = 5;
-			else val = 1;
+			if (p1.m_x > p2.m_x) val = 1; // W-Out
+			else val = 5; // E-Out
 		}
 	}
 	if (v == v2){
 		if (p1.m_x == p2.m_x){ //edge is vertical
-			if (p1.m_y > p2.m_y) val = 0;
-			else val = 4;
+			if (p1.m_y > p2.m_y) val = 4; // S-in
+			else val = 0; //N-in
 		}else{ //edge is horizontal
-			if (p1.m_x > p2.m_x) val = 2;
-			else val = 6;
+			if (p1.m_x > p2.m_x) val = 6; //E-In
+			else val = 2; //W-In
 		}
 	}
+	OGDF_ASSERT(val!=-1);
 	return val;
 }
 
-void Lattice::adjSort(node v, adjEntry newAdj){
+void Lattice::adjSort(adjEntry newAdj){ //sorts adjList from small to large adjPos <=> in math-pos direction
+	node v = newAdj->theNode();
+		//std::cout << "sorting " << newAdj->theEdge() << " at " << v;
 	List<adjEntry> adjList;
 	this->adjEntries(v,adjList);
-	if (adjList.size() == 1) return;	
+	if (adjList.size() == 1) {
+		//std::cout <<  " done" << std::endl;
+		return;	
+	}
 	adjEntry pred = adjList.popBackRet(); //remove the newly added AdjEntry
 	char newPos = adjPos(v,newAdj->theEdge());
 	char predPos = 8;
+	//std::cout << "  l: " << adjList.size();
 	while(adjList.empty() == false){
 		pred = adjList.popBackRet();
+		//std::cout << "  l: " << adjList.size();
 		predPos = adjPos(v,pred->theEdge());
 		if (predPos < newPos){
 			this->moveAdjAfter(newAdj,pred);
+			//std::cout << " done" << std::endl;
 			return;
 		}
 	}
 	this->moveAdjBefore(newAdj,pred);
+	//std::cout << " done" << std::endl;
 }
 
 edge Lattice::connect(node v1, node v2){
 	edge e = this->searchEdge(v1,v2);
-	if (e == NULL) e = this->searchEdge(v2,v1);
-	if (e == NULL) e = newEdge(v1,v2);
+	if (e != NULL) if(v1 == e->source()){		
+		//std::cout << "EDGE ALREADY EXISTS" << std::endl;
+		return e;
+	}
+	e = newEdge(v1,v2);
+	//std::cout << "    created edge " << e->index() << std::endl;
 	IPoint p1 = nodePos[v1];
 	IPoint p2 = nodePos[v2];
-	if (v1 == e->source()){
-		adjSort(v1,e->adjSource());
-		adjSort(v2,e->adjTarget());	
-	}else{
-		adjSort(v2,e->adjSource());
-		adjSort(v1,e->adjTarget());	
+	height[e] = getHeight(p1,p2);
+	adjSort(e->adjSource());
+	adjSort(e->adjTarget());		
+	
+	/*if (p1.m_x == p2.m_x){
+		start[e] = min(p1.m_y, p2.m_y);
+		end[e] = max(p1.m_y, p2.m_y);				
 	}
+	if (p1.m_y == p2.m_y){
+		start[e] = min(p1.m_x, p2.m_x);
+		end[e] = max(p1.m_x, p2.m_x);		
+	}*/
+	
 	return e;
 }
 
 node Lattice::getNode(IPoint pos){ 
 	node v;
 	forall_nodes(v,*this){
-		if (nodePos[v] == pos){
+		if (nodePos[v] == pos){			
+			//std::cout << "NODE EXISTS" << std::endl;
 			return v;
-			std::cout << "NODE EXISTS" << std::endl;
 		}
 	}
 	node w = newNode();
+	//std::cout << "created node# " << w << ": " << pos<< std::endl;
 	nodePos[w] = pos;
 	return w;
 }
@@ -129,14 +174,20 @@ bool Lattice::isOutside(IPoint pos){
 List<edge> Lattice::edges(IPoint p1, IPoint p2){
 	int pos = getHeight(p1,p2);
 	List<edge> crossings;
+	//std::cout << "getting crossings" << std::endl;
 	if (p1.m_x == p2.m_x){
+		//std::cout << "line is vertical" << std::endl;
 		if(p1.m_y > p2.m_y){
 			int a = p2.m_y;
 			int b = p1.m_y;
+			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 			forall_listiterators(edge, it, hor){
+				//std::cout << "edges: " << (*it)->index() << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 				if (height[*it] > a){
+					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] <= pos && end[*it] >= pos){
+					if (start[*it] < pos && end[*it] > pos){
+						//std::cout << hor.pos(it) << " CROSSING FOUND A " << (*it)->index() << std::endl;
 						crossings.pushFront(*it);
 					}
 				}
@@ -144,10 +195,15 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 		}else{
 			int a = p1.m_y;
 			int b = p2.m_y;
+			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 			forall_listiterators(edge, it, hor){
+				//std::cout << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 				if (height[*it] > a){
+					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] <= pos && end[*it] >= pos){
+					if (start[*it] < pos && end[*it] > pos){
+						
+						//std::cout << hor.pos(it) << " CROSSING FOUND B " << (*it)->index() << std::endl;
 						crossings.pushBack(*it);
 					}
 				}
@@ -155,13 +211,18 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 		}
 	}
 	if (p1.m_y == p2.m_y){
+		//std::cout << "line is horizontal" << std::endl;
 		if(p1.m_x > p2.m_x){
 			int a = p2.m_x;
 			int b = p1.m_x;
+			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
+
 			forall_listiterators(edge, it, vert){
 				if (height[*it] > a){
+					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] <= pos && end[*it] >= pos){
+					if (start[*it] < pos && end[*it] > pos){
+						//std::cout << vert.pos(it) << " CROSSING FOUND C " << (*it)->index() << std::endl;
 						crossings.pushFront(*it);
 					}
 				}
@@ -169,52 +230,105 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 		}else{
 			int a = p1.m_x;
 			int b = p2.m_x;
+			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 			forall_listiterators(edge, it, vert){
+				//std::cout << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 				if (height[*it] > a){
+					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] <= pos && end[*it] >= pos){
+					if (start[*it] < pos && end[*it] > pos){
+						//std::cout << vert.pos(it) << " CROSSING FOUND D " << (*it)->index() << std::endl;
 						crossings.pushBack(*it);
 					}
 				}
 			}
 		}
 	}
+	//if (!crossings.empty()){
+	//	//std::cout << "FOUND " << crossings.size() << " CROSSING EDGES: " << std::endl;
+	//	forall_listiterators(edge, it, crossings){			
+	//		std::cout << (*it)->index() << ": "<< nodePos[(*it)->source()] << "-> " << nodePos[(*it)->target()] <<std::endl;
+	//		if (p1.m_y == p2.m_y){
+	//			forall_listiterators(edge, it, vert){
+	//				std::cout << "e: " << (*it)->index() << std::endl;
+	//			}
+	//		}
+	//		if (p1.m_x == p2.m_x){
+	//			forall_listiterators(edge, it, vert){
+	//				std::cout << "e: " << (*it)->index() << std::endl;
+	//			}
+	//		}
+	//	}
+	//}
 	return crossings;
 }
 
 node Lattice::splitEdge(edge e, int pos){
 	node v1 = e->source();
-	node v2 = e->target();
+	node v2 = e->target();	
 	IPoint p1 = nodePos[v1];
 	IPoint p2 = nodePos[v2];
-	node newV = newNode();
-	edge e1 = newEdge(v1,newV);
-	edge e2 = newEdge(newV,v2);
+	//std::cout << "  splitting edge " << e->index() << ": " << p1 << "->" << p2 << std::endl;
+	
+	
+	node newV = newNode();	
 	int a = getHeight(p1,p2);
-	height[e1] = a;
-	height[e2] = a;
-	int d = m_outline.search(e);
-	if ( d != -1){
-		ListIterator<edge> ito = m_outline.get(d);
-		m_outline.insertAfter(e2, ito);
-		m_outline.insertAfter(e1, ito);
-		m_outline.del(ito);
+	if (p1.m_y == p2.m_y) nodePos[newV] = IPoint(pos, a);
+	if (p1.m_x == p2.m_x) nodePos[newV] = IPoint(a,pos);
+
+	//std::cout << "created Node " << newV << std::endl;
+	edge e1 = connect(v1,newV);	
+	sortIn(e1);
+	//std::cout << "created edge " << e1->index() << std::endl;
+	edge e2 = connect(newV,v2);
+	sortIn(e2);
+	//std::cout << "created edge " << e2->index() << std::endl;
+	edge e3 = connect(v2,newV);
+	//std::cout << "created edge " << e3->index() << std::endl;
+	edge e4 = connect(newV,v1);
+	//std::cout << "created edge " << e4->index() << std::endl;
+	
+	//height[e1] = a;
+	//height[e2] = a;	
+	//height[e3] = a;
+	//height[e4] = a;
+
+	if (p1.m_y == p2.m_y){ //edge is horizontal
+		//std::cout << "splitting horizontal edge" << std::endl;
+		ListIterator<edge> ite = hor.get(hor.search(e));
+		nodePos[newV] = IPoint(pos, a);
+		//if (ite.valid()) //std::cout << "valid" << std::endl;
+		//else //std::cout << "invalid" << std::endl;
+		OGDF_ASSERT(ite.valid());
+		/*hor.insertAfter(e1, ite);
+		hor.insertAfter(e2, ite);*/
+		hor.del(ite);		
 	}
-	if (p1.m_y == p2.m_y){
+	if (p1.m_x == p2.m_x){ //edges are vertical
+		//std::cout << "splitting vertical edge" << std::endl;
 		ListIterator<edge> ite = vert.get(vert.search(e));
 		nodePos[newV] = IPoint(a,pos);
-		vert.insertAfter(e1, ite);
-		vert.insertAfter(e2, ite);
+		//if (ite.valid()) //std::cout << "valid" << std::endl;
+		//else //std::cout << "invalid" << std::endl;
+		OGDF_ASSERT(ite.valid());
+		/*vert.insertAfter(e1, ite);
+		vert.insertAfter(e2, ite);*/
 		vert.del(ite);
 	}
-	if (p1.m_x == p2.m_x){
-		ListIterator<edge> ite = vert.get(vert.search(e));
-		nodePos[newV] = IPoint(pos,a);
-		hor.insertAfter(e1, ite);
-		hor.insertAfter(e2, ite);
-		hor.del(ite);
-	}
+	//std::cout << "crossNode#" << newV << ": " << nodePos[newV] << std::endl;
+	//std::cout << "deleting edge " << e << std::endl;
 	delEdge(e);
+	edge e_alt = this->searchEdge(v2,v1);
+	//std::cout << "deleting edge " << e_alt << std::endl;
+	delEdge(e_alt);
+	//adjSort(e1->adjSource());
+	//adjSort(e2->adjSource());
+	//adjSort(e3->adjSource());
+	//adjSort(e4->adjSource());
+	//adjSort(e1->adjTarget());
+	//adjSort(e2->adjTarget());
+	//adjSort(e3->adjTarget());
+	//adjSort(e4->adjTarget());
 	return newV;
 }
 
@@ -372,22 +486,91 @@ void Lattice::addLine(IPolyline line) {
 		node vSrc = getNode(p1);
 		node vTrg = getNode(p2);		
 		List<edge> crossings = edges(p1, p2);
-		ListIterator<edge> ite = crossings.rend(); // I hope this does what I think it does
+		bool debug = false;
+		debug = (!crossings.empty());
+		//ListIterator<edge> ite = crossings.begin(); // I hope this does what I think it does ADDENDUM: IT DOESN'T!!
+		//if (debug) std::cout << ite.valid() << " ()() " << ite.succ().valid() << std::endl;
 		node v1 = vSrc;
 		node v2;
-		do{
-			if (ite.valid()) ite = ite.succ();
-			if (ite.valid()) v2 = splitEdge(*ite,height);
-			else v2 = vTrg;
-			std::cout << " connect:" << nodePos[v1] << "->" << nodePos[v2] << "#nodes: " << this->numberOfNodes(); 
+		forall_listiterators(edge,ite,crossings){	
+			v2 = splitEdge(*ite,height);			
 			edge e = connect(v1,v2);
-		}while(ite.valid());
-		std::cout << "  done"  << std::endl;
+			sortIn(e);
+			connect(v2,v1);
+			v1 = v2;
+		}
+		v2 = vTrg;
+		edge e = connect(v1,v2);
+		sortIn(e);
+		connect(v2,v1);
+
 	}
+	//std::cout << "recalc ...";
 	m_pOutline = CalcOutline();
+	//std::cout << "done" << std::endl;
 };
 
-edge Lattice::getRight(edge e){
+void Lattice::sortIn(edge e){	
+	node v1 = e->source();
+	node v2 = e->target();
+	IPoint p1 = nodePos[v1];
+	IPoint p2 = nodePos[v2];	
+	int pos = getHeight(p1,p2);
+	//std::cout << "sorting in e# " << e->index() << ": " << pos << "  (" << height[e]<< ")" << std::endl;
+
+	if (p1.m_x == p2.m_x){
+		start[e] = min(p1.m_y, p2.m_y);
+		end[e] = max(p1.m_y, p2.m_y);	
+		//std::cout << "inserting v-edge " << e << ":" << start[e] << "->" << end[e] << "  h: " << pos << std::endl;
+		if (vert.empty()) {
+			vert.pushFront(e);
+			//std::cout << "push " << e->index() << std::endl;
+		}
+		else{					
+			if (p1.m_y > p2.m_y) {
+				ListIterator<edge> ST = findST(vert, pos);
+				if (ST.valid()) vert.insertAfter(e , ST);	
+				else vert.pushFront(e);
+			}
+			else{
+				ListIterator<edge> BT = findBT(vert, pos);
+				if (BT.valid()) vert.insertBefore(e, BT);
+				else vert.pushBack(e);
+			}
+		}
+	}
+	if (p1.m_y == p2.m_y){
+		start[e] = min(p1.m_x, p2.m_x);
+		end[e] = max(p1.m_x, p2.m_x);
+		//std::cout << "inserting h-edge " << e << ":" << start[e] << "->" << end[e] << "  h: " << pos << std::endl;
+		if (hor.empty()) hor.pushFront(e);
+		else{			
+			if (p1.m_x > p2.m_x){				
+				ListIterator<edge> ST = findST(hor, pos);
+				if (ST.valid()) hor.insertAfter(e , ST);	
+				else hor.pushFront(e);
+			}else{
+				ListIterator<edge> BT = findBT(hor, pos);
+				if (BT.valid()) hor.insertBefore(e, BT);
+				else hor.pushBack(e);
+			}
+		}
+	}
+	//std::cout << "vert:" << std::endl;
+	//forall_listiterators(edge,it,vert){
+	//	edge e = *it;
+	//	std::cout << "  #" << e->index() << " h: " << height[e] << std::endl;
+	//}
+	//std::cout << "hor:" << std::endl;
+	//forall_listiterators(edge,it,hor){
+	//	edge e = *it;
+	//	std::cout << "  #" << e->index() << " h: " << height[e] << std::endl;	
+	//}
+	//std::cout << std::endl<< std::endl;
+}
+
+edge Lattice::getRight(edge e){ //returns the next OUTGOING edge in pos direction.
+	//std::cout << "getRight(edge e) ";
 	/*OGDF_ASSERT(e_in->target() == w);*/
 	node w = e->target();
 	/*adj,Entry adj;*/
@@ -395,10 +578,21 @@ edge Lattice::getRight(edge e){
 	/*forall_adj(adj,w){
 		if (adj->theEdge() == e_in) inc = adj;
 	}*/
-	adjEntry out = inc->cyclicPred();
+	List<adjEntry> adjList;
+	this->adjEntries(w,adjList);
+	//std::cout << "node " << w << " has " << adjList.size() << " adjEntries";
+	adjEntry out = inc->cyclicSucc(); 
 	edge e_out = out->theEdge();
-	if (e_out->source() == w) return e_out;
-	else this->reverseEdge(e_out);
+	int loopcount = 0;
+	
+	while (e_out->source() != w){	
+		loopcount ++;
+		if (loopcount > 10) throw -1;
+		out = out->cyclicSucc();
+		//std::cout << out << std::endl;
+		e_out = out->theEdge();
+	}
+	//std::cout << "return e_out";
 	return e_out;
 }
 void Lattice::removeLine(IPolyline line){
@@ -412,27 +606,82 @@ void Lattice::removeLine(IPolyline line){
 	node vEnd = NULL;
 	node v1 = NULL;
 	node v2 = NULL;
-
+	//std::cout << "Deleting line [" << p2;
+	//forall_listiterators(IPoint, it, line){
+	//	std::cout << "->" << (*it) ;
+	//}
+	//std::cout << "]" << std::endl;
 	forall_listiterators(IPoint, it, line){
 		p1 = p2;
 		p2 = *it;
-		int height = getHeight(p1,p2);
-		v1 = getNode(p1);
-		v2 = getNode(p2);				
-		e = NULL;
-		e = searchEdge(v1,v2);
-		if (e != NULL){
-			delEdge(e);
-		}
-		e = searchEdge(v2,v1);
-		if (e != NULL){
-			delEdge(e);
-		}//if (e != NULL)
-		 if (v1->indeg() + v1->outdeg() == 0) delNode(v1);
-		 if (v2->indeg() + v2->outdeg() == 0) delNode(v2);
+		//int height = getHeight(p1,p2);
+		//v1 = getNode(p1);
+		//v2 = getNode(p2);		
+		List<ListIterator<edge>> delFromList;
+		if (p1.m_x == p2.m_x){ //line is vertical		
+			int a = min(p1.m_y, p2.m_y);
+			int b = max(p1.m_y, p2.m_y);
+			//std::cout << "vert: " << std::endl;
+			forall_nonconst_listiterators(edge, it, vert){
+				//std::cout << "remove :" << (*it)->index() << " h: " << height[*it] << ": [" << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << "]" << std::endl;
+				if (height[*it] == p1.m_x){
+					if (start[*it] >= a && end[*it] <= b){
+						delFromList.pushFront(it);
+						node v1 = (*it)->source();
+						node v2 = (*it)->target();
+						//std::cout << "  deleting [" << nodePos[v1] << "->" << nodePos[v2] << "]" << std::endl;
+						delEdge(*it);
+						edge e = searchEdge(v1,v2);
+						//std::cout << "  deleting [" << nodePos[e->source()] << "->" << nodePos[e->target()] << "]" << std::endl;
+						delEdge(e);
+						if (v1->indeg() + v1->outdeg() == 0) delNode(v1);
+						if (v2->indeg() + v2->outdeg() == 0) delNode(v2);
+						//if (end[*it] >= b) break; doesn't work, List not sorted by start-end !!
+					}
+				}
+				if (height[*it] > p1.m_x) break;
+
+			}
+			//std::cout << std::endl;
+			forall_listiterators(ListIterator<edge>,itit,delFromList){
+				vert.del(*itit);
+			}
+		}		
+		if (p1.m_y == p2.m_y){ //line is horizontal
+			int a = min(p1.m_x, p2.m_x);
+			int b = max(p1.m_x, p2.m_x);
+		//	std::cout << "hor: " << std::endl;
+			forall_nonconst_listiterators(edge, it, hor){
+			//	std::cout << "remove :" << (*it)->index() << " h: " << height[*it] << ": [" << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << "]" << std::endl;
+				if (height[(*it)] == p1.m_y){
+					if (start[*it] >= a && end[*it] <= b){
+						delFromList.pushFront(it);
+						node v1 = (*it)->source();
+						node v2 = (*it)->target();
+						//std::cout << "  deleting [" << nodePos[v1] << "->" << nodePos[v2] << "]" << std::endl;
+						delEdge(*it);
+						edge e = searchEdge(v1,v2);
+						//std::cout << "  deleting [" << nodePos[e->source()] << "->" << nodePos[e->target()] << "]" << std::endl;
+						delEdge(e);
+						if (v1->indeg() + v1->outdeg() == 0) delNode(v1);
+						if (v2->indeg() + v2->outdeg() == 0) delNode(v2);
+						/*if (end[*it] >= b) break;*/ //doesn't work, list not sorted by start-end!
+					}
+				}
+				if (height[*it] > p1.m_y) break;
+			}
+			//std::cout << std::endl;
+			forall_listiterators(ListIterator<edge>,itit,delFromList){
+				hor.del(*itit);
+			}
+		}				
 	}
+	//forall_listiterators(edge,it,vert){
+	//	edge e = *it;
+	//	std::cout << "#" << e->index() << " " << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;
+	//}
 	m_pOutline = CalcOutline();
-	std::cout << "line removed" << std::endl;
+	//std::cout << "line removed" << std::endl;
 }
 IPolyline Lattice::outline(){
 	return m_pOutline;
@@ -443,31 +692,28 @@ IPolyline Lattice::CalcOutline(){
 	IPolyline ret;
 	node v,w;
 	w = this->chooseNode();
-	forall_nodes(v,*this){
-		if (nodePos[v].m_y <= nodePos[w].m_y){
-			if (nodePos[v].m_y < nodePos[w].m_y) w = v;
+	forall_nodes(v,*this){ //get the southernmost node
+		if (nodePos[v].m_y >= nodePos[w].m_y){
+			if (nodePos[v].m_y > nodePos[w].m_y) w = v;
 			else if (nodePos[v].m_x < nodePos[w].m_x){
 				w = v;
 			}			
 		}
 	}
-	//std::cout << "n:" << nodePos[w] << "  ";
 	IPoint tempPos = nodePos[w];
-	tempPos.m_y -= 1;
+	tempPos.m_y += 1;
 	node tempNode = getNode(tempPos);
-	edge tempEdge = connect(tempNode, w);
+	edge tempEdge = connect(tempNode, w);	
 	edge e = getRight(tempEdge);
+	edge firstEdge = e;	
 	ret.pushBack(nodePos[e->source()]);
 	ret.pushBack(nodePos[e->target()]);
-	std::cout << "TERMINUS: " << nodePos[w] << std::endl;
-	bool loop = false;
-	while(e->target() != w){
-		loop = true;
-		std::cout << "[" << nodePos[e->source()] << " -> " << nodePos[e->target()] << "] ";
-		e = getRight(e);
+	e = getRight(e);	
+	while(e != firstEdge){
 		ret.pushBack(nodePos[e->target()]);
+		e = getRight(e);
 	}
-	if (loop) std::cout << std::endl;
+
 	delNode(tempNode);
 
 	return ret;

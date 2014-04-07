@@ -42,8 +42,9 @@ private:
 	ListIterator<edge> findBT(List<edge> &edgelist, int pos);
 	void merge(node v1, node v2); //merge two nodes that share position
 	char adjPos(node v, edge e);// returns the direction of e going from N-in = 0 CCW to N-out = 7
-	void adjSort(node v, adjEntry newAdj);
+	void adjSort(adjEntry newAdj);
 	edge getRight(edge e); //get the edge that's to the right of e, create a new edge if direction is wrong;
+	void sortIn(edge e); //sorts e into hor and vert;
 
 public:	
 	Lattice();
