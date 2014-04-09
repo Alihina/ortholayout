@@ -93,17 +93,14 @@ protected:
 	/*starting with node v find a cluster of nodes and merge to a single node and GridGraph. 
 	The parameter p indicates how close the cluster should be. 
 	*/	
-	void findCluster(node v, int p); 
-	List<node> findClusterRecurse(List<node> cluster, int p);
-
 
 public:
+	void findCluster(node v, int p); 
+	List<node> findClusterRecurse(List<node> cluster, int p);
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
+
+	List<node> GridGraph::trimCluster(List<node> U, node v);
 private:
-
-
-	List<node> GridGraph::trimCluster(Graph G, List<node> U, node v);
-	
 
 	
 	

@@ -1022,7 +1022,7 @@ void GraphIO::OnKeydown(){
 			break;
 		case SDLK_c:
 			if (selNode){
-				currentGG.moveToCluster(selNode->firstAdj()->twinNode(), selNode);
+				selNodes = currentGG.trimCluster(selNodes,selNode);
 			}
 			break;
 		case SDLK_SPACE: //pause and unpause
@@ -1548,14 +1548,14 @@ bool GraphIO::think() {
 	
 void GraphIO::drawSelected() {
 	bool isEmpty = selNodes.empty();
-	if (!isEmpty){
-		ListIterator<node> it;
-		forall_listiterators(node,it,selNodes){
-			drawSelectedNode(*it);
-		}
+	if (!isEmpty){		
 		forall_listiterators(edge,it,selEdges){
 			drawSelectedEdge(*it);
 		}
+		forall_listiterators(node,it,selNodes){
+			drawSelectedNode(*it);
+		}
+
 	}
 }
 
@@ -1653,7 +1653,8 @@ if (GridMode){
 
 	SDL_Rect nodeRect = {Vnode.m_x, Vnode.m_y,(w*zoom),(h*zoom)};
 	
-	SDL_SetRenderDrawColor(rend,40,255,40,255);
+	//SDL_SetRenderDrawColor(rend,40,255,40,255);
+	SDL_SetRenderDrawColor(rend,255,40,40,255);
 	SDL_RenderFillRect(rend, &nodeRect);
 	//for (int i = 0; i < 4; i++){
 	//	--nodeRect.x;
@@ -1713,6 +1714,12 @@ void GraphIO::drawEdge(GraphAttributes &GA, edge e, int alpha) {
 }
 
 void GraphIO::drawEdge(GridGraph &GG, edge e, int alpha) {
+	if (GG.dedgeline(e).empty()){
+		std::cout << "undifined edge drawing "<< e << std::endl;
+		return;
+	}
+
+
 	Uint8 oldr, oldg, oldb, olda;
     SDL_GetRenderDrawColor(rend, &oldr, &oldg, &oldb, &olda); //Get current color
 
