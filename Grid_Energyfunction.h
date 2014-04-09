@@ -1,9 +1,10 @@
-#ifndef  GRID_ENERGYFUNCTION_H
+#ifndef GRID_ENERGYFUNCTION_H
 #define GRID_ENERGYFUNCTION_H
 
 #include <GridGraph.h>
 #include <iostream>
 #include <ogdf/basic/Graph.h>
+#include <ogdf/basic/String.h>
 #include <ogdf/basic/geometry.h>
 #include <OGDF/basic/Thread.h>
 

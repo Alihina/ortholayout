@@ -5,7 +5,7 @@
 #include <OGDF/basic/Thread.h>
 #include <Grid_EnergyFunction.h>
 #include <GridGraph.h>
-
+#include <ogdf/basic/String.h>
 
 
 
@@ -54,7 +54,7 @@ double Grid_EnergyFunction::computeCandidateEnergy(const node v)
 
 #ifdef OGDF_DEBUG
 void Grid_EnergyFunction::printStatus() const{
-	cout << "\nEnergy function name: " << m_name;
+	/*cout << "\nEnergy function name: " << m_name;
 	cout << "\nCurrent energy: " << m_energy;
 	node v;
 	cout << "\nPosition of nodes in current solution:";
@@ -66,7 +66,7 @@ void Grid_EnergyFunction::printStatus() const{
 	}
 	cout << "\nTest Node: " << m_testNode << " New coordinates: " << m_testPos;
 	cout << "\nCandidate energy: " << m_candidateEnergy;
-	printInternalData();
+	printInternalData();*/
 }
 #endif
 

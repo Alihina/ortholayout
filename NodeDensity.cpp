@@ -1,23 +1,35 @@
 #include "stdafx.h"
-#include <NodeDensity.h>
-
+#include "NodeDensity.h"
+#include <ogdf/basic/geometry.h>
 
 using namespace ogdf;
 
 
-//BondingBoxSize::BondingBoxSize(const String &funcname, GridGraph &GG){m_bondingBox = IPoint(INT_MAX,INT_MAX) ;}
-/**/ //INT_MIN std::
+NodeDensity::NodeDensity(const String &funcname, GridGraph &GG):
+Grid_EnergyFunction(funcname,GG)
+{
+	m_Outline=m_GG.getOutline();
+}
+
 
 //! computes energy for the layout at the beginning of the optimization process
 void NodeDensity::computeEnergy()
-{m_energy = NodeDensity::OutlineArea(m_GG.getBox(),m_GG.getOutline())/m_GG.numberOfNodes();
+{  
+	m_energy = GridGraph::outlineArea(m_GG.getOutline())/m_GG.numberOfNodes();
 }
 
 
 //! computes the energy of the configuration with the considered testvertex and sets the value of m_candidateEnergy.
 void NodeDensity::compCandEnergy()
-{m_candidateEnergy=m_GG.boxarea();};
+{  
+	if (m_GG.getOutline()!=m_Outline)
+	{
+		m_candidateEnergy=GridGraph::outlineArea(m_GG.getOutline())/m_GG.numberOfNodes();
+	}
+}
 
-void NodeDensity::internalCandidateTaken() {;}
-
+void NodeDensity::internalCandidateTaken() 
+{
+	m_Outline=m_GG.getOutline();
+}
 
