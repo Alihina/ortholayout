@@ -1,4 +1,4 @@
-
+#include "stdafx.h"
 
 #include <Grid.h>
 #include <ogdf/basic/Graph.h>
@@ -76,15 +76,16 @@ bool Grid::findEdge(IPoint A, IPoint B, IPolyline &line) { // The IPolyline cont
 	bool found = false;
 	IPoint c; //the cursor that tracks where we are while finding back
 	node n,m;
+	n = NULL;
 	edge e;
 	while (!bfsqueue.empty()) { //bfsloop
 		n = bfsqueue.pop();
 		if (n==m_Grid(B.m_x,B.m_y).h_node){
-			found == true;
+			found = true;
 			break; //we're done!
 		}
 		if (n==m_Grid(B.m_x,B.m_y).v_node){
-			found == true;
+			found = true;
 			break; //we're done!
 		}
 		forall_adj_edges(e,n) {
@@ -932,7 +933,7 @@ bool Grid::isFreeLine(IPolyline E) {
 	return true;
 }
 
-bool Grid::isFree(IPolyline outline) { //returns true if every point in the area is free. 
+bool Grid::isFree(IPolyline E) { //returns true if every point in the area is free. 
 
 	
 	ListIterator<IPoint> iter, next, onext, backiter;

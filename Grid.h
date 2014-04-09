@@ -1,13 +1,16 @@
+#ifndef GRID
+#define GRID
+
 
 #include <ogdf/basic/Graph.h>
 #include <ogdf/basic/geometry.h>
 #include <ogdf/basic/Thread.h>
 #include <ogdf/basic/Array2D.h>
 
-#ifndef GRID
-#define GRID
 
 
+
+using namespace ogdf;
 
 class Gridpoint
 {
@@ -64,6 +67,7 @@ public:
 	bool isFreeLine(IPolyline E); //CHANGED: added this
 	bool isFree(IPolyline outline); //Returns true if there is no node on the grind inside the shape given by outline
 	
+	List<int> unionLists(ogdf::List<int> prev, ogdf::List<int> curr);
 	// EdgeArray<double> weight; //notwendig?
 	
 	/*
