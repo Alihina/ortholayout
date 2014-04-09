@@ -1,3 +1,5 @@
+#ifndef GRIDDH_H
+#define GRIDDH_H
 // grid version of DavidsonHarel to work on GridGraphs
 
 //changes of Variable types
@@ -8,12 +10,11 @@
 #pragma once
 #endif
 
-#ifndef GRIDDH_H
-#define GRIDDH_H
 
 
-#include <ogdf/internal/energybased/EnergyFunction.h>
+
 #include <GridGraph.h>
+#include <Grid_Energyfunction.h>
 
 namespace ogdf {
 
@@ -74,7 +75,7 @@ private:
 	void initParameters();
 
 	//! Randomly computes a node and a new position for that node.
-	node computeCandidateLayout(const GridGraph &GG, IPoint &newPos) const;
+	node computeCandidateLayout(GridGraph &GG, IPoint &newPos) const;
 
 	//! Tests if new energy value satisfies annealing property (only better if m_fineTune).
 	bool testEnergyValue(double newVal);

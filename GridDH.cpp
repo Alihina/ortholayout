@@ -1,6 +1,8 @@
+#include "stdafx.h"
 
 #include <GridDH.h>
 #include <ogdf/basic/Math.h>
+#include <Grid_Energyfunction.h>
 #include <time.h>
 
 //TODO: in addition to the layout size, node sizes should be used in
@@ -115,13 +117,11 @@ namespace ogdf {
 	//returned value is the node that should be moved,
 	//newPos is the place it is moved to.
 	//TODO: this function retries fiddling things until it finds a change that doesn't collide.
-	node GridDH::computeCandidateLayout(
-	const GridGraph &GG,
-	IPoint &newPos) const
+	node GridDH::computeCandidateLayout( GridGraph &GG, IPoint &newPos) const
 	{
 		while(true) {//no way this can go wrong, maybe add a counter? or just continue in main algo?
 //int randomPos = randomNumber(0,m_nonIsolatedNodes.size()-1);
-			node v = GG.getNonDummyNode();
+			node v = GG.chooseNonDummy();
 				
 //*(m_nonIsolatedNodes.get(randomPos)); //getting that node and calculating a new point for it
 			double oldx = GG.x(v); //TODO: this needs to be reformatted that it works
@@ -144,6 +144,7 @@ namespace ogdf {
 	//the initial layout or depending on the value of m_fineTune
 	void GridDH::computeFirstRadius(const GridGraph &GG)  //need to redo this
 	{
+		/*
 		const Graph &G = GG.constGraph();
 		node v = G.firstNode();
 		double minX = GG.x(v);
@@ -163,11 +164,11 @@ namespace ogdf {
 
 		double ratio = h/w;
 
-		double W = sqrt(G.numberOfNodes() / ratio);
+		double W = sqrt(G.numberOfNodes() / ratio);  
 
 		m_diskRadius = W / 5.0;//allow to move by a significant part of current layout size
-		m_diskRadius=max(m_diskRadius,max(maxX-minX,maxY-minY)/5.0);
-
+		m_diskRadius=max(m_diskRadius,max(maxX-minX,maxY-minY)/5.0);  //*/
+		m_diskRadius = 100;
 		//TODO: also use nodeg sizes
 		/*
 		double lengthSum(0.0);
@@ -277,17 +278,18 @@ namespace ogdf {
 
 		const Graph &G = GG.constGraph();
 		//compute the list of vertices with degree greater than zero
-		G.allNodes(m_nonIsolatedNodes); //this might as well be all nodes, our data set is connected
+		/*G.allNodes(m_nonIsolatedNodes); //this might as well be all nodes, our data set is connected, so we don't need this
 		ListIterator<node> it,itSucc;
 		for(it = m_nonIsolatedNodes.begin(); it.valid(); it = itSucc) {
 			itSucc = it.succ();
 			if((*it)->degree() == 0) m_nonIsolatedNodes.del(it);
-		}
-		if(G.numberOfEdges() > 0) { //else only isolated nodes
+		} /*/
+
+		if(G.numberOfEdges() > 0) { //else only isolated nodes, so this is true.
 			computeFirstRadius(GG);
 			computeInitialEnergy();
 			if(m_numberOfIterations == 0)
-				m_numberOfIterations = m_nonIsolatedNodes.size() * m_iterationMultiplier;
+				m_numberOfIterations = G.numberOfNodes() * m_iterationMultiplier;
 			//this is the main optimization loop
 			while(m_temperature > 0) {
 				//iteration loop for each temperature
@@ -301,7 +303,7 @@ namespace ogdf {
 					ListIterator<double> it2 = m_weightsOfEnergyFunctions.begin();
 					double newEnergy = 0.0;
 					for(it = m_energyFunctions.begin(); it.valid(); it = it.succ()) {
-						newEnergy += (*it)->computeCandidateEnergy(v,newPos) * (*it2);
+						newEnergy += (*it)->computeCandidateEnergy(v) * (*it2);
 						it2 = it2.succ();
 					}
 					OGDF_ASSERT(newEnergy >= 0.0);
@@ -331,7 +333,7 @@ namespace ogdf {
 		}
 //if there are zero degree vertices, they are placed using placeIsolatedNodes //not gonna happen
 //if(m_nonIsolatedNodes.size() != G.numberOfNodes())
-placeIsolatedNodes(GG);
+//placeIsolatedNodes(GG); //don't need, don't care
 
 	}
 } //namespace
