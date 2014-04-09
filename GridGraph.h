@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <ogdf/basic/Graph.h>
+#include <ogdf/basic/Stack.h>
 #include <ogdf/basic/geometry.h>
 #include <OGDF/basic/Thread.h>
 #include <OGDF/basic/Array2D.h>
@@ -50,6 +51,10 @@ protected:
 	NodeArray<node> m_vCopy; //!< The corresponding node in the GridGraph. (returns NULL if the node is saved in an edge or not part of this GG)
 		
 	EdgeArray<edge> m_eCopy; //! The corresponding edge in the GridGraph. (returns NULL if the node is not part of this GG)
+	
+	static unsigned int instanceCount; //counts the # of GridGraph instances to assign unique ids
+	unsigned int m_id; // id of the object instance, used for comparing objects.
+	
 
 	Grid m_Grid; //!< the Grid object associated with the GridGraph
 	EdgeArray<IPolyline> m_edgeline; //!< startingpos, list of bend points and endpos of an edge 
@@ -58,6 +63,7 @@ protected:
 	
 	List<edge> m_eOutgoing; //!< list of outgoing edges of the graph. The edges in this list belong to the original Graph.
 	List<node> m_vConnect; //!< list of dummynodes on the outline that specify the position of the connection for the outgoing edges. The order must be the same as m_eOutgoing.
+	node getConnectNode(edge e);
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
 	List<node> m_nonDummy; //! list of all non-dummy nodes
 
@@ -77,8 +83,8 @@ protected:
 	NodeArray<double> m_vYScale; //continous realization of Y-Mirror for drawing animation frames
 	NodeArray<IPolyline> m_vOutline; //outline of v in relation to pos of v accounting for rotation and mirroring.
 
-	IPolyline m_outline; //The Shape of the Gridgraph (not necessarily maintained throughout annealing)
-
+	//IPolyline m_outline; //The Shape of the Gridgraph (not necessarily maintained throughout annealing)
+	Lattice m_lattice;
 	
 	NodeArray<char> m_vState; //returns -1 if node is invisible, 1 if node is temporary, 0 else 
 	EdgeArray<char> m_eState; //returns -1 if edge is invisible, 1 if edge is temporary, 0 else
@@ -88,20 +94,31 @@ protected:
 	The parameter p indicates how close the cluster should be. 
 	*/	
 	void findCluster(node v, int p); 
+	List<node> findClusterRecurse(List<node> cluster, int p);
+
+
+public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
+private:
+
+
+	List<node> GridGraph::trimCluster(Graph G, List<node> U, node v);
 	
 
 	
 	
 public:
+	List<edge> eoutgoing(){return m_eOutgoing;};
 	GridGraph(); //standard constructor, just make it throw an error to make sure it's not used
 	GridGraph(const GridGraph &GG); // construct a GridGraph taht is a copy of GG
 	GridGraph(const Graph &G, node orig); // Construct a Gridgraph that represents a single node v
 	GridGraph(const Graph &G); //Costruct a GridGraph that represents a Graph G
 	GridGraph& operator=(const GridGraph& GG);
+	bool operator==(const GridGraph &GG) const{return (this->id() == GG.id());};
+	//A destructor might prove neccessary in the end
 	
-	node addNode(node orig); //adds a node, returns the new node
-	edge addEdge(edge orig); 
+	node addNode(node orig); //adds a node, returns the new node, takes care of consequential edges and connections
+	edge addEdge(edge orig); //never used (?)
 	
 	//returns a pointer to the Gridgraph represented by node v;
 	GridGraph * GridGraph_of(node v){return m_vGridGraph[v];};
@@ -118,7 +135,9 @@ public:
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
 
 	IPolyline getBox(); //returns bottemleft and upperright cornerpoint of GG
-	
+	IPolyline GridGraph::getOutline(){ return m_lattice.outline();};
+	void addToLattice(IPolyline line){m_lattice.addLine(line);};
+	void removeFromLattice(IPolyline line){m_lattice.removeLine(line);};
 	
 
 	/*Initiate the GridGraph with a valid starting layout, preferrably with enough free space to move nodes around.
@@ -152,7 +171,7 @@ public:
 	const Graph& constGraph() const {
 		return *m_pGraph;
 	}
-
+	unsigned int id() const{return m_id;};
 	int &x(node v){return m_x[v];};
 	int &y(node v){return m_y[v];};
 	double &dx(node v){return m_dx[v];};
@@ -175,7 +194,7 @@ public:
 	IPolyline &edgeline(edge e){return m_edgeline[e];};
 	DPolyline &dedgeline(edge e){return m_dedgeline[e];};
 	void setEdgeline(edge e, IPolyline line){m_edgeline[e] = line;}; // manually set the edgeline without consideration for the Grid	//EIGENTLICH OBSOLET
-	IPolyline &getOutline(){return m_outline;};
+	//IPolyline &getOutline(){return m_outline;}; implemented above
 	IPolyline &getOutline(node v){return m_vOutline[v];};
 
 	List<GridGraph> &GGList(){return m_GGList;};

@@ -476,6 +476,7 @@ void Lattice::merge(node v1, node v2){
 }
 
 void Lattice::addLine(IPolyline line) {
+	if (line.empty()) return;
 	IPoint p1;
 	IPoint p2 = line.popFrontRet();
 	ListIterator<IPoint> it;	
@@ -596,6 +597,7 @@ edge Lattice::getRight(edge e){ //returns the next OUTGOING edge in pos directio
 	return e_out;
 }
 void Lattice::removeLine(IPolyline line){
+	if (line.empty()) return;
 	edge oldEdge = NULL;
 	edge e = NULL;
 	IPoint p1;

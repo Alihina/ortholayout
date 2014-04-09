@@ -5,10 +5,18 @@
 #include <GridGraph.h>
 
 
+unsigned int GridGraph::instanceCount = 0;
 
-GridGraph::GridGraph(){}; //DONE!
+GridGraph::GridGraph(){
+	m_id = instanceCount;
+	instanceCount++;
+}; //DONE!
 
 GridGraph::GridGraph(const Graph &G, node orig){ //DONE!
+	m_id = instanceCount;
+	instanceCount++;
+	
+	std::cout << "SINGLENODE GGid: " << m_id << std::endl;
 	m_pGraph = &G;
 	m_vOrig.init(*this);	
 	m_eOrig.init(*this);
@@ -45,10 +53,15 @@ GridGraph::GridGraph(const Graph &G, node orig){ //DONE!
 	adjEntry adj;
 	forall_adj(adj,orig){ //for all adjacent 
 		m_eOutgoing.pushFront(adj->theEdge()); //new outgoing edge
+		std::cout << "crt conn " << adj->theEdge()<<std::endl;
 		node connect = this->newNode();
 
 		m_vConnect.pushFront(connect);				
 		edge e = newEdge(v,connect);
+		std::cout << "outgoing list:" << std::endl;
+		forall_listiterators(edge,it,m_eOutgoing){
+			std::cout << "edge: "<<*it<<" id: " << (*it)->index() << std::endl;
+		}
 
 
 
@@ -59,6 +72,9 @@ GridGraph::GridGraph(const Graph &G, node orig){ //DONE!
 };
 
 GridGraph::GridGraph(const Graph &G){ // DONE!
+	m_id = instanceCount;
+	instanceCount++;
+	std::cout << "WHOLEGRAPH GGid: " << m_id << std::endl;
 	m_pGraph = &G;
 	m_vOrig.init(*this);	
 	m_eOrig.init(*this);	
@@ -107,6 +123,9 @@ GridGraph::GridGraph(const Graph &G){ // DONE!
 GridGraph::GridGraph(const GridGraph &GG){ 
 
 	//Standard GridGraph initialization
+	m_id = instanceCount;
+	instanceCount++;
+	std::cout << "GGCOPY GGid: " << m_id << std::endl;
 	m_pGraph = &GG.constGraph();
 	m_vOrig.init(*this);	
 	m_eOrig.init(*this);	
@@ -191,6 +210,9 @@ GridGraph::GridGraph(const GridGraph &GG){
 	//copy all general members
 	m_Grid = GG.m_Grid;
 	m_dPos = GG.m_dPos;
+	m_eOutgoing = GG.m_eOutgoing;
+	m_vConnect = GG.m_vConnect;
+	m_lattice = GG.m_lattice;
 	
 
 };
@@ -199,6 +221,7 @@ GridGraph::GridGraph(const GridGraph &GG){
 GridGraph& GridGraph::operator=(const GridGraph& GG){
 	this->clear();
 	//Standard GridGraph initialization
+	std::cout << "ASSIGNMENT: " << m_id << std::endl;
 	m_pGraph = &GG.constGraph();
 	m_vOrig.init(*this);	
 	m_eOrig.init(*this);	
@@ -346,21 +369,153 @@ IPolyline GridGraph::getBox(){
 	return box;
 }
 
-void GridGraph::findCluster(node v, int p){}; 
+List<node> GridGraph::findClusterRecurse(List<node> cluster, int p){
+	if (p == 0) return cluster;
+	List<node> add;
+	forall_listiterators(node, it, cluster){
+		node v = *it;
+		adjEntry adj;
+		forall_adj(adj, v){
+			node w = adj->twinNode();
+			if (cluster.search(w) == -1){
+				if (add.search(w) == -1) add.pushFront(w);
+			}
+		}
+	}
+	cluster.conc(add);
+	return findClusterRecurse(cluster, p-1);
+
+}
+
+void GridGraph::findCluster(node v, int p){
+	List<node> cluster;
+	cluster.pushFront(v);
+	cluster = findClusterRecurse(cluster, p);
+	cluster = trimCluster(*this,cluster,v);
+	forall_listiterators(node,it,cluster){
+		if (*it != v){
+			moveToCluster(*it,v);
+		}
+	}
+
+}; 
+
+List<node> GridGraph::trimCluster(Graph G, List<node> U, node v) {
+	//pseudocode:
+	//Do DFS:
+	Stack<edge> DFSstack;
+	Stack<node> DFSparent; //always push and pop both!
+	edge e;
+	edge f;
+	node n;
+	node m;
+	forall_adj_edges(e,v) {
+		DFSstack.push(e);
+		DFSparent.push(v);
+	}
+	EdgeArray<bool> e_visited(G,false);
+	EdgeArray<node> direct(G);
+	NodeArray<bool> v_visited(G,false);
+	NodeArray<node> parent(G);
+	List<edge> backedges;
+	parent[v] = 0;
+	v_visited[v] = true;
+
+	while (!DFSstack.empty()) {
+		e = DFSstack.pop();
+		n = DFSparent.pop();
+		m = e->opposite(n);
+		if (v_visited[m] == false){ 
+			if (U.search(m)==-1) {
+				continue;
+			}
+			else {
+				direct[e] = n;
+				e_visited[e] = true;
+				parent[m] = n;
+				forall_adj_edges(f,m) {
+					if (e_visited[f]==false) {
+						DFSstack.push(f);
+						DFSparent.push(m);
+					}
+				}
+			}
+		}
+		else {
+			e_visited[e] = true;
+			direct[e] = n;
+			backedges.pushBack(e);
+		}
+	}
+
+	bool done = false;
+	NodeArray<bool> marked(G,false);
+	ListIterator<edge> i;
+	marked[v] = true;
+	while (!done) {
+		done = true;
+		for( ListIterator<edge> it = backedges.begin(); it.valid(); ++it) {
+			if ( marked[(*it)->opposite(direct[(*it)])] ) {
+				n = direct[(*it)];
+				while (marked[n]==false) {
+					marked[n] = true;
+					n = parent[n];
+				}
+				i = it;
+				++it; //oder --it? macht glaub ich nichts aus.
+				backedges.del(i);
+				done = false;
+			}
+		}
+	}
+	List<node> component;
+	forall_nodes(n,G) {
+		if (marked[n]) {
+			component.pushBack(n);
+		}
+	}
+	return component;
+}
+
+node GridGraph::getConnectNode(edge e){
+		int pos = m_eOutgoing.search(e);
+		std::cout << "outgoing list:" << std::endl;
+		forall_listiterators(edge,it,m_eOutgoing){
+			std::cout << "OLedge: "<<*it<<" id: " << (*it)->index()  << std::endl;
+		}
+		std::cout << "edge: "<<e<<"pos: "<< pos << " id: " << e->index() << std::endl;
+		return *(m_vConnect.get(pos));
+	}
 
 node GridGraph::addNode(node orig){ 
 	node v = this->newNode();
 	m_nonDummy.pushFront(v);
 	m_vOrig[v].pushFront(orig);
 	m_vCopy[orig] = v;
+	std::cout << "AddNodeGGid: " << m_id << std::endl;
+	std::cout << "outgoing list:" << std::endl;
+	
+	forall_listiterators(edge,it,m_eOutgoing){
+				std::cout << "OLedge: "<<*it<<" id: " << (*it)->index()  << std::endl;
+	}
 
 	adjEntry adj;
 	forall_adj(adj,orig){
 		node w = m_vCopy[adj->twinNode()];
+		std::cout << "debug" << w;
 		if (w) {
+			forall_listiterators(edge,it,m_eOutgoing){
+				std::cout << "OLedge: "<<*it<<" id: " << (*it)->index()  << std::endl;
+			}
+			node conn = getConnectNode(adj->theEdge()); //should always work because v->w has been outgoing edge
+			m_eOutgoing.del(m_eOutgoing.get(m_eOutgoing.search(adj->theEdge())));
+			m_vConnect.del(m_vConnect.get(m_vConnect.search(conn)));
+			delNode(conn);
+
 			edge e = newEdge(v,w);
 			m_eOrig[e].pushFront(adj->theEdge());
 			m_eCopy[adj->theEdge()] = e;
+
 		}else{
 			m_eOutgoing.pushFront(adj->theEdge());
 			node connect = newNode();
@@ -374,102 +529,236 @@ node GridGraph::addNode(node orig){
 }
 
 edge GridGraph::addEdge(edge orig){
-	edge e = this->newEdge(Copy(orig->source()), Copy(orig->target()));
+	edge e = this->newEdge(Copy(orig->source()), Copy(orig->target()));	
 	m_eOrig[e].pushFront(orig);
 	m_eCopy[orig] = e;
 	return e;
 }
 
-void GridGraph::moveToCluster(node w, node v){ //not quite done! (?)
-	if (m_vOrig[w].size() != 1) {
+
+
+void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
+	/*if (m_vOrig[w].size() != 1) {
 		std::cout << "ERROR: Trying to move whole cluster to another cluster (not implemented!)" << std::endl;
 		throw -1;
-	}
-	node orig = m_vOrig[w].front();
+	}*/
+	std::cout << "w is " << w << " degree "<< w->degree() << std::endl;
+	List<node> origList = m_vOrig[w];
+	//List<adjEntry> connAdj;
+	//forall_listiterators(node,it,origList){ //get the list of adjacent nodes (adjEntries) of the cluster in original
+	//	node orig = *it;
+	//	adjEntry adj;
+	//	forall_adj(adj,orig){
+	//		if (origList.search(adj->twinNode()) == -1){
+	//			if (connAdj.search(adj) == -1) connAdj.pushFront(adj);
+	//		}
+	//	}
+	//}
+	std::cout << "before new GG w is " << w << " degree "<< w->degree() << std::endl;
 	if (GridGraph_of(v) == NULL) {
-		m_GGList.pushFront(GridGraph(*m_pGraph, m_vOrig[v].front() ));
+		std::cout << "stillBeforew is " << w << " degree "<< w->degree() << std::endl;
+		GridGraph newGG = GridGraph(*m_pGraph, m_vOrig[v].front());
+		std::cout << "beforeList is " << w << " degree "<< w->degree() << std::endl;
+		m_GGList.pushFront(newGG);
+		std::cout << "afterListw is " << w << " degree "<< w->degree() << std::endl;
 		m_vGridGraph[v] = &m_GGList.front();
+		std::cout << "w is " << w << " degree "<< w->degree() << std::endl;
 	}
-	
+	std::cout << "after new GG w is " << w << " degree "<< w->degree() << std::endl;		
+
+
 	GridGraph &GG = *GridGraph_of(v);
-	
-	node w2 = GG.addNode(m_vOrig[w].front()); //create the new node
-
-
-	IPoint wPos(0,0);
-	IPoint vPos(0,0);
-	IPoint relPos(0,0);
-	if (m_x[v] != -1) { // if v has a position give the corr. node in GG a position.
-		
-		GG.setPos(GG.Copy(orig), IPoint(0,0)); 	
-
-		if (m_x[w] != -1){ //if w has a position, give w2 in GG that position and calc outline
-			wPos = this->getPos(w);
-			vPos = this->getPos(v);
-			relPos = IPoint(wPos.m_x - vPos.m_x,wPos.m_y - vPos.m_y);
-		
-			GG.setPos(w2,relPos); // move it to position
+	if (GG.eoutgoing().empty()) std::cout << "EMPTY" << std::endl;
+	std::cout << GG.numberOfNodes();
+	forall_listiterators(edge,it,GG.eoutgoing()){
+			std::cout << "edge: "<<*it<<" id: " << (*it)->index() << std::endl;
 		}
+	GridGraph * p_srcGG = GridGraph_of(w);
+	std::cout << "w is " << w << " degree "<< w->degree() << std::endl;
+	removeFromLattice(GG.getOutline());
+		
+
+	std::cout << "w is " << w << " degree "<< w->degree() << std::endl;
+	int loopcount = 0;
+	forall_listiterators(node,it,origList){ //add all nodes from subGG of w
+		std::cout << "LOOPCOUNT: " << loopcount++  <<  " w is " << w << std::endl;
+		node orig = *it;		
+		std::cout << "w is " << w << " degree "<< w->degree() << std::endl;
+		node w2 = GG.addNode(orig); //create the new node aswell as adj edges and connections
+		std::cout << "w is " << w << " degree "<< w->degree() << std::endl;
+		m_vOrig[v].pushFront(orig);
+		m_vCopy[orig] = v;
+		
+		std::cout << "w is " << w << std::endl;
+
+		IPoint wPos(0,0);
+		IPoint vPos(0,0);
+		IPoint relPos(0,0);
+		// if v has a position give the corr. node in GG a position.
+		std::cout << "w is " << w << std::endl;
+		GG.setPos(GG.Copy(orig), IPoint(0,0)); 	
+		//if (m_x[w] != -1){ //if w has a position, give w2 in GG that position and calc outline
+		if (p_srcGG) {
+			wPos.m_x = this->getPos(w).m_x + GG.getPos(GG.Copy(orig)).m_x;
+			wPos.m_y = this->getPos(w).m_y + GG.getPos(GG.Copy(orig)).m_y;
+		}
+		else wPos = this->getPos(w);
+		std::cout << "w is " << w << std::endl;
+		vPos = this->getPos(v);
+		relPos = IPoint(wPos.m_x - vPos.m_x,wPos.m_y - vPos.m_y);
+		GG.setPos(w2,relPos); // move it to position				
+		edge e;
+		edge e2;
+		std::cout << "w is " << w << std::endl;
+		forall_adj_edges(e,w2){
+			if (e2 = this->Copy(GG.original(e).front())){
+				GG.edgeline(e) = this->edgeline(e2);
+			}
+			if (p_srcGG){
+				if (e2 = p_srcGG->Copy(GG.original(e).front())){
+					GG.edgeline(e) = p_srcGG->edgeline(e2);
+				}
+			}
+		}
+		std::cout << "w is " << w << std::endl;
+
+	}
+	std::cout << "FINISHED ORIGLIST LOOPw is " << w << std::endl;
+	//	forall_adj(adj,orig){ ALL THIS SHIT IS FOR PREDEFINED GEOMETRY, DON'T NEED THAT
+	//		//node thisnode = m_vCopy[adj->twinNode()]; //get adjacent in this
+	//		//edge thisedge = m_eCopy[adj->theEdge()]; 
+	//		//adjEdges.pushFront(thisedge);
+	//		//node nodeGG = GG.Copy(adj->twinNode()); // get adjacent in GG		
+	//		//edge edgeGG = GG.Copy(adj->theEdge());
+	//		
+	//		if(GG.Copy(adj->twinNode())){//Case1: adjNode is in GG
+	//		}
+	//			//remove connection of GG
+	//			//add Edge
+	//			//Case 1a: adjNode is in origList == is in SrcGG
+	//				//Copy edgepath from SrcGG
+	//			//Case 1b: adjNode is not in origList{
+	//				//Copy Edgepath from this
+	//		//Case2: adjNode is not in this:
+	//			//Case2a: adjNode is in origList == is in SrcGG
+	//			edge e;
+	//			if (thisedge->source() == w) e = newEdge(v,thisedge->target());				
+	//			else e = newEdge(thisedge->source(),v);
+	//			m_eCopy[adj->theEdge()] = e;
+	//			ListIterator<edge> it;
+	//			forall_listiterators(edge, it, m_eOrig[thisedge]){
+	//				m_eOrig[e].pushBack(*it);
+	//			}
+	//			ListIterator<IPoint> it2;
+	//			forall_listiterators(IPoint, it2, m_edgeline[thisedge]){ //get edgeline from this
+	//				m_edgeline[e].pushBack(*it2);
+	//			}						
+	//		}
+	//				
+	//	}			
+	//}
+	//
+	//
+	//
+	//
+	//// TO DO: Update Outline
+	//
+	//adjEntry adj;
+	//forall_adj(adj, orig){ //forall adjacent nodes in original
+	//	node thisnode = m_vCopy[adj->twinNode()]; //get adjacent in this
+	//	edge thisedge = m_eCopy[adj->theEdge()]; 
+	//	adjEdges.pushFront(thisedge);
+	//	node nodeGG = GG.Copy(adj->twinNode()); // get adjacent in GG		
+	//	edge edgeGG = GG.Copy(adj->theEdge());
+	//	if(nodeGG){ // if the adjacent node is already part of the cluster
+	//		 // TODO: properly get edge geometry
+	//		m_eCopy[adj->theEdge()] = NULL; //original edge don't have copy in this anymore
+	//		IPolyline line;
+	//		ListIterator<IPoint> it;
+	//		forall_listiterators(IPoint,it,m_edgeline[thisedge]){ //copy edgepath (edge is not empty iff nodes have positions. i hope.)
+	//			IPoint point = (*it);
+	//			point.m_x -= vPos.m_x;
+	//			point.m_y -= vPos.m_y;
+	//			line.pushBack(point);
+	//		}
+	//		GG.addToLattice(line);
+	//		removeFromLattice(line);			
+	//	}else{ //else reroute edges in this
+	//		edge e;
+	//		if (thisedge->source() == w){
+	//			e = newEdge(v,thisedge->target());				
+	//		}else{
+	//			e = newEdge(thisedge->source(),v);
+	//		}
+	//		
+	//		m_eCopy[adj->theEdge()] = e;
+	//		ListIterator<edge> it;
+	//		forall_listiterators(edge, it, m_eOrig[thisedge]){
+	//			m_eOrig[e].pushBack(*it);
+	//		}
+	//		ListIterator<IPoint> it2;
+	//		forall_listiterators(IPoint, it2, m_edgeline[thisedge]){
+	//			m_edgeline[e].pushBack(*it2);
+	//		}						
+	//	}			
+	//	delEdge(thisedge);
+	//}
+	if (p_srcGG){
+		m_GGList.del(m_GGList.get(m_GGList.search(*p_srcGG)));
+	}
+	std::cout << "w is " << w << std::endl;
 	
-
-	}
-	// TO DO: Update Outline
-	List<edge> adjEdges;
 	adjEntry adj;
-	forall_adj(adj, orig){ //forall adjacent nodes in original
-		node thisnode = m_vCopy[adj->twinNode()]; //get adjacent in this
-		edge thisedge = m_eCopy[adj->theEdge()]; 
-		adjEdges.pushFront(thisedge);
-		node nodeGG = GG.Copy(adj->twinNode()); // get adjacent in GG		
-		edge edgeGG = GG.Copy(adj->theEdge());
-		if(nodeGG){ // if the adjacent node is already part of the cluster
-			 // TODO: properly get edge geometry
-			m_eCopy[adj->theEdge()] = NULL;
-			IPolyline line;
-			ListIterator<IPoint> it;
-			forall_listiterators(IPoint,it,m_edgeline[thisedge]){ //copy edgepath (edge is not empty iff nodes have positions. i hope.)
-				IPoint point = (*it);
-				point.m_x -= vPos.m_x;
-				point.m_y -= vPos.m_y;
-				line.pushBack(point);
-			}
-		}else{ //else reroute edges in this
-			edge e;
-			if (thisedge->source() == w){
-				e = newEdge(v,thisedge->target());				
-			}else{
-				e = newEdge(thisedge->source(),v);
-			}
-			
-			m_eCopy[adj->theEdge()] = e;
-			ListIterator<edge> it;
-			forall_listiterators(edge, it, m_eOrig[thisedge]){
-				m_eOrig[e].pushBack(*it);
-			}
-			ListIterator<IPoint> it2;
-			forall_listiterators(IPoint, it2, m_edgeline[thisedge]){
-				m_edgeline[e].pushBack(*it2);
-			}						
-		}			
-		delEdge(thisedge);
+	forall_adj(adj,w){ //reconnect edges that were previously connected to w
+		if(adj->twinNode() != v ){		
+			addEdge(adj->theEdge());
+		}
 	}
+	std::cout << "w is " << w << std::endl;
 
-
-	//delete w from this
-	m_vCopy[orig] = NULL;
-	//m_vState[w] = 0;
-	//m_vOrig[w].clear();
+	////delete w from this
+	//m_vCopy[orig] = NULL;
+	////m_vState[w] = 0;
+	////m_vOrig[w].clear();
 	int pos = m_nonDummy.search(w);
+	std::cout << "w is " << w << std::endl;
+	if (pos == -1){
+		while(true){
+			std::cout << "THIS SHOULD NEVER HAPPEN: " << w << std::endl;
+			forall_listiterators(node,it,m_nonDummy){
+				std::cout << *it << std::endl;
+			}
+			std::cout << "POS: " << m_nonDummy.search(w) << std::endl;
+		}
+	}
 	m_nonDummy.del(m_nonDummy.get(pos));
 	delNode(w);
-
+	//addToLattice(GG.getOutline());
 
 }; 			
 void GridGraph::init(){};
 
 bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror){return false;};
 IPoint GridGraph::getConnection(edge e){return IPoint(0,0);};
-void GridGraph::clusterize(int p){};
+
+void GridGraph::clusterize(int p){	
+	List<node> nodes;
+	this->allNodes(nodes);
+	forall_listiterators(node,it,nodes){
+		List<node> nowNodes;
+		this->allNodes(nowNodes);
+		node v = *it;
+		if (nowNodes.search(v) != -1){	//check to see if v is still in this graph
+			int degree = v->indeg() + v->outdeg();
+			if (degree > 2){
+				std::cout << "calling findcluster on " << v << std::endl;
+				findCluster(v,p);
+			}
+		}
+	}
+};
+
+
 
 
 

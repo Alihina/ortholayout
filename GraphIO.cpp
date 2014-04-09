@@ -852,129 +852,131 @@ void GraphIO::displayParentarray(const NodeArray<List<node>> &parentarray){
 };
 
 void GraphIO::clusterize(int p){
-	NodeArray<List<NodeArray<List<node>>*>> registeredArrays; //For every node in currentCopy save a list of pointers to the parentarrays of the BFS searches that visited the node.
-	registeredArrays.init(currentCopy);
-	List<NodeArray<List<node>>> parentarrays; //for every BFS save the Nodearray that point each node to its parent.
-	ListIterator<NodeArray<List<node>>> itPA;
-	ListIterator<node> it;
-	ListIterator<NodeArray<List<node>>*> itPAp;
-	List<node> found; //the list of nodes that will be added to the selection
-	List<node> searched; //the list of nodes that have been covered by at least one BFS
-	List<edge> hidden; //the list of edges that have been hidden
-	ListIterator<edge> ite;
-	List<node> neighbors; //the list of nodes that neighbor the current selection
+	currentGG.clusterize(p);
 
-	node v = NULL;
-	node w = NULL;
-	edge e = NULL;
-	
-	/*parentarrays.clear();
-	searched.clear();
-	found.clear();*/
+	//NodeArray<List<NodeArray<List<node>>*>> registeredArrays; //For every node in currentCopy save a list of pointers to the parentarrays of the BFS searches that visited the node.
+	//registeredArrays.init(currentCopy);
+	//List<NodeArray<List<node>>> parentarrays; //for every BFS save the Nodearray that point each node to its parent.
+	//ListIterator<NodeArray<List<node>>> itPA;
+	//ListIterator<node> it;
+	//ListIterator<NodeArray<List<node>>*> itPAp;
+	//List<node> found; //the list of nodes that will be added to the selection
+	//List<node> searched; //the list of nodes that have been covered by at least one BFS
+	//List<edge> hidden; //the list of edges that have been hidden
+	//ListIterator<edge> ite;
+	//List<node> neighbors; //the list of nodes that neighbor the current selection
 
-	std::cout << "clustering " << selNodes.size() << " nodes with parameter " << p<< std::endl;
-
-	
-	forall_listiterators(node, it, selNodes){ // compile a list of neighboring nodes
-		std::cout << "search cluster for " << *it << std::endl;
-		v = (*it);		
-		//std::cout << "v is " << v << std::endl;
-		adjEntry adj;				
-		List<adjEntry> adjList;
-		ListIterator<adjEntry> itadj;
-		forall_adj(adj,v){ //compile list of adjEntries because hiding edges during forall_adj breaks everything
-			//std::cout << "adj is " << adj << std::endl;
-			adjList.pushFront(adj);
-		}
-		forall_listiterators(adjEntry,itadj,adjList){ 
-			adj = *itadj;
-			w = adj->twinNode();
-			e = adj->theEdge();
-			if (selNodes.search(w) == -1) {
-				neighbors.pushFront(w);
-				hidden.pushFront(e);
-				currentCopy.hideEdge(e);
-			}
-		}
-	}
-	forall_listiterators(node,it,neighbors){ //for every neighbor of the current selection
-		v = (*it);
-		if (searched.search(v) == -1) searched.pushFront(v);
-		NodeArray<List<node>> parentarray2(currentCopy,List<node>());
-		parentarrays.pushFront(parentarray2);
-		NodeArray<List<node>> &parentarray = parentarrays.front(); //I'm not entirely sure why, but this works and results in pointers that do what they're supposed to.
-		registeredArrays[v].pushFront(&parentarray);
-		parentarray[v].pushFront(v);
-		bfs_recurse(v,0, p,searched, parentarray, registeredArrays); //construct a BFS Parentarray
-		
-		if (&parentarrays.front() != registeredArrays[v].front()) std::cout << std::endl<< std::endl<< std::endl<< std::endl<<"===============SOMETHING WENT WRONG==============="<< std::endl<< std::endl<< std::endl<< std::endl<< std::endl;
-	}
-	
-	forall_listiterators(edge,ite,hidden){ // restores the edges
-		currentCopy.restoreEdge(*ite);
-	}
-
-	
-	forall_listiterators(NodeArray<List<node>>, itPA, parentarrays){
-			int pos = parentarrays.pos(itPA);
-			std::cout << "parrentarray nr."<< pos << ": ";
-			displayParentarray(*itPA);	
-	}
-	
-	//forall_nodes(v,currentCopy){
-	//	std::cout << v << ": " << registeredArrays[v].size() << std::endl;
-	//}
+	//node v = NULL;
+	//node w = NULL;
+	//edge e = NULL;
 	//
-	forall_nodes(v,currentCopy){ //for all nodes
-		if (registeredArrays[v].size() > 1){ //if node has been coverd by at least two BFSs
-			if (found.search(v) == -1) found.pushFront(v); //add the node
-			forall_listiterators(NodeArray<List<node>>*,itPAp,registeredArrays[v]){	//and all parents for every parentarray
-				addParents(v,*(*itPAp),found);
-			}
-		}
-	}
-	//std::cout << "found nodes: ";
-	forall_listiterators(node,it,found){
-		//std::cout << *it << " ";
-		addToSelection(*it);
-	}
+	///*parentarrays.clear();
+	//searched.clear();
+	//found.clear();*/
 
+	//std::cout << "clustering " << selNodes.size() << " nodes with parameter " << p<< std::endl;
 
-	//	forall_listiterators(adjEntry,itadj,adjlist){
-	//		adj = (*itadj);
-	//		node w = adj->twinNode();
-	//		if (selNodes.search(w) == -1){
-	//			int dist = 0;				
-	//			NodeArray<List<node>> parentarray(currentCopy);
-	//			currentCopy.hideEdge(adj->theEdge());
-	//			
-	//			if (searched.search(w)){ //if the node has been covered
-	//				forall_listiterators(NodeArray<List<node>>, it, parentarrays)//for all other BFSs
-	//					if (!(*it)[w].empty()) addParents(w,(*it),found); //add the parrents																
-	//				parentarray[w].pushFront(v); // make v w's parent (although this should be unnecessary) and
-	//				found.pushFront(w); //add the node to found 								
-	//				ListIterator<NodeArray<List<node>>> it;											
-	//				/* NOTE: Don't start this BFS if another has been found to save time and avoid leaves */
-	//			}else{ //if the node has not been found by other bfs			
-	//				searched.pushFront(w);
-	//				parentarray[w].pushFront(w);					
-	//				bfs_recurse(w,dist, p,searched, found,parentarray, parentarrays);
-	//				parentarrays.pushFront(parentarray);					
-	//			}
-	//			currentCopy.restoreEdge(adj->theEdge());			
-
-	//		}else std::cout << w << " is already selected" << std::endl;			
-	//		
-	//		
-	//	}//forall_listiterators AdjEntries
-	//	
-	//	forall_listiterators(node, it, found){ // add found nodes to selection
-	//		std::cout << "adding "<< *it << " to selection" << std::endl;
-	//		addToSelection(*it);
+	//
+	//forall_listiterators(node, it, selNodes){ // compile a list of neighboring nodes
+	//	std::cout << "search cluster for " << *it << std::endl;
+	//	v = (*it);		
+	//	//std::cout << "v is " << v << std::endl;
+	//	adjEntry adj;				
+	//	List<adjEntry> adjList;
+	//	ListIterator<adjEntry> itadj;
+	//	forall_adj(adj,v){ //compile list of adjEntries because hiding edges during forall_adj breaks everything
+	//		//std::cout << "adj is " << adj << std::endl;
+	//		adjList.pushFront(adj);
 	//	}
-
+	//	forall_listiterators(adjEntry,itadj,adjList){ 
+	//		adj = *itadj;
+	//		w = adj->twinNode();
+	//		e = adj->theEdge();
+	//		if (selNodes.search(w) == -1) {
+	//			neighbors.pushFront(w);
+	//			hidden.pushFront(e);
+	//			currentCopy.hideEdge(e);
+	//		}
+	//	}
+	//}
+	//forall_listiterators(node,it,neighbors){ //for every neighbor of the current selection
+	//	v = (*it);
+	//	if (searched.search(v) == -1) searched.pushFront(v);
+	//	NodeArray<List<node>> parentarray2(currentCopy,List<node>());
+	//	parentarrays.pushFront(parentarray2);
+	//	NodeArray<List<node>> &parentarray = parentarrays.front(); //I'm not entirely sure why, but this works and results in pointers that do what they're supposed to.
+	//	registeredArrays[v].pushFront(&parentarray);
+	//	parentarray[v].pushFront(v);
+	//	bfs_recurse(v,0, p,searched, parentarray, registeredArrays); //construct a BFS Parentarray
+	//	
+	//	if (&parentarrays.front() != registeredArrays[v].front()) std::cout << std::endl<< std::endl<< std::endl<< std::endl<<"===============SOMETHING WENT WRONG==============="<< std::endl<< std::endl<< std::endl<< std::endl<< std::endl;
 	//}
 	//
+	//forall_listiterators(edge,ite,hidden){ // restores the edges
+	//	currentCopy.restoreEdge(*ite);
+	//}
+
+	//
+	//forall_listiterators(NodeArray<List<node>>, itPA, parentarrays){
+	//		int pos = parentarrays.pos(itPA);
+	//		std::cout << "parrentarray nr."<< pos << ": ";
+	//		displayParentarray(*itPA);	
+	//}
+	//
+	////forall_nodes(v,currentCopy){
+	////	std::cout << v << ": " << registeredArrays[v].size() << std::endl;
+	////}
+	////
+	//forall_nodes(v,currentCopy){ //for all nodes
+	//	if (registeredArrays[v].size() > 1){ //if node has been coverd by at least two BFSs
+	//		if (found.search(v) == -1) found.pushFront(v); //add the node
+	//		forall_listiterators(NodeArray<List<node>>*,itPAp,registeredArrays[v]){	//and all parents for every parentarray
+	//			addParents(v,*(*itPAp),found);
+	//		}
+	//	}
+	//}
+	////std::cout << "found nodes: ";
+	//forall_listiterators(node,it,found){
+	//	//std::cout << *it << " ";
+	//	addToSelection(*it);
+	//}
+
+
+	////	forall_listiterators(adjEntry,itadj,adjlist){
+	////		adj = (*itadj);
+	////		node w = adj->twinNode();
+	////		if (selNodes.search(w) == -1){
+	////			int dist = 0;				
+	////			NodeArray<List<node>> parentarray(currentCopy);
+	////			currentCopy.hideEdge(adj->theEdge());
+	////			
+	////			if (searched.search(w)){ //if the node has been covered
+	////				forall_listiterators(NodeArray<List<node>>, it, parentarrays)//for all other BFSs
+	////					if (!(*it)[w].empty()) addParents(w,(*it),found); //add the parrents																
+	////				parentarray[w].pushFront(v); // make v w's parent (although this should be unnecessary) and
+	////				found.pushFront(w); //add the node to found 								
+	////				ListIterator<NodeArray<List<node>>> it;											
+	////				/* NOTE: Don't start this BFS if another has been found to save time and avoid leaves */
+	////			}else{ //if the node has not been found by other bfs			
+	////				searched.pushFront(w);
+	////				parentarray[w].pushFront(w);					
+	////				bfs_recurse(w,dist, p,searched, found,parentarray, parentarrays);
+	////				parentarrays.pushFront(parentarray);					
+	////			}
+	////			currentCopy.restoreEdge(adj->theEdge());			
+
+	////		}else std::cout << w << " is already selected" << std::endl;			
+	////		
+	////		
+	////	}//forall_listiterators AdjEntries
+	////	
+	////	forall_listiterators(node, it, found){ // add found nodes to selection
+	////		std::cout << "adding "<< *it << " to selection" << std::endl;
+	////		addToSelection(*it);
+	////	}
+
+	////}
+	////
 }
 
 void GraphIO::OnKeydown(){
@@ -1017,6 +1019,11 @@ void GraphIO::OnKeydown(){
 			break;
 		case SDLK_0: 
 			clusterize(10);
+			break;
+		case SDLK_c:
+			if (selNode){
+				currentGG.moveToCluster(selNode->firstAdj()->twinNode(), selNode);
+			}
 			break;
 		case SDLK_SPACE: //pause and unpause
 			pause = !pause;
