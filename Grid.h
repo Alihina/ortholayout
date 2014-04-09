@@ -1,13 +1,11 @@
-#ifndef GRID
-#define GRID
-
-
 
 #include <ogdf/basic/Graph.h>
 #include <ogdf/basic/geometry.h>
-#include <OGDF/basic/Thread.h>
-#include <OGDF/basic/Array2D.h>
+#include <ogdf/basic/Thread.h>
+#include <ogdf/basic/Array2D.h>
 
+#ifndef GRID
+#define GRID
 
 
 
@@ -39,6 +37,9 @@ class Grid: public Graph
 {
 protected:
 	Array2D<Gridpoint> m_Grid; //The two-d	imensional array of gridpoints
+	//CHANGED: now we have these nodearrays so we can easily look up where a point is
+	NodeArray<int> x_coord;
+	NodeArray<int> y_coord;
 public:
 	Grid(); //create a new grid with only one gridpoint
 	//CHANGED: added this second constructor
@@ -50,7 +51,8 @@ public:
 	Edges that can't be crossed without losing the space necessary to reinsert the nodes saved in that edge modify the grid accordingly.
 	The polyline of the edge is returned so that GridGraph can update the bendpoints of the edge.
 	*/
-	IPolyline findEdge(IPoint A, IPoint B);  
+	//CHANGED: findeEdge now returns a bool: false: no edge found, true: the edge is now saved in the new argument, line.
+	bool findEdge(IPoint A, IPoint B, IPolyline &line);  
 	//CHANGED: camelcase'd these next six names
 	void registerPoint(IPoint A);
 	void registerLine(IPolyline E);
@@ -59,6 +61,7 @@ public:
 	void restoreLine(IPolyline E); //reinserts gridedges and gridnodes along the line E
 	void restoreFill(IPolyline E); //repairs Grid in the area given by the outline E
 	bool isFree(IPoint A); //Returns true if there is no node on gridpoint A
+	bool isFreeLine(IPolyline E); //CHANGED: added this
 	bool isFree(IPolyline outline); //Returns true if there is no node on the grind inside the shape given by outline
 	
 	// EdgeArray<double> weight; //notwendig?
