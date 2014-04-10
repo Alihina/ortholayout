@@ -538,7 +538,7 @@ void Grid::restoreLine(IPolyline E) {
 	}
 }
 
-List<int> unionLists(ogdf::List<int> prev, ogdf::List<int> curr) {
+List<int> Grid::unionLists(ogdf::List<int> prev, ogdf::List<int> curr) {
 	// calculates the union of two lists of ints that each describe a set of intervals
 	
 	List<int> u;

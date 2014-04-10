@@ -75,7 +75,7 @@ private:
 	void initParameters();
 
 	//! Randomly computes a node and a new position for that node.
-	node computeCandidateLayout(GridGraph &GG, IPoint &newPos) const;
+	node computeCandidateLayout(GridGraph &GG, bool &worked) const;
 
 	//! Tests if new energy value satisfies annealing property (only better if m_fineTune).
 	bool testEnergyValue(double newVal);
@@ -84,13 +84,13 @@ private:
 	double randNum() const;
 
 	//! Computes the first disk radius as the half the diamter of the enclosing rectangle.
-	void computeFirstRadius(const GridGraph &GG);
+	void computeFirstRadius(GridGraph &GG);
 
 	//! Computes the energy of the initial layout and stores it in \a m_energy.
 	void computeInitialEnergy();
 
 	//! Computes positions for the vertices of degree zero.
-	void placeIsolatedNodes(GridGraph &GG) const;
+	//void placeIsolatedNodes(GridGraph &GG) const; don't need, don't care
 
 	//! Fake assignment operator (dummy to avoid copying)
 	GridDH& operator=(const GridDH &dh);

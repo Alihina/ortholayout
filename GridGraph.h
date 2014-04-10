@@ -66,6 +66,7 @@ protected:
 	node getConnectNode(edge e);
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
 	List<node> m_nonDummy; //! list of all non-dummy nodes
+	
 
 	NodeArray<GridGraph *> m_vGridGraph; //!< Pointer to the corresponding GridGraph element that the nodes represent, NULL if node is atomic
 	List<GridGraph> m_GGList; //List where the sub GridGraphs are saved.
@@ -100,6 +101,7 @@ public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
 
 	List<node> GridGraph::trimCluster(List<node> U, node v);
+	List<node> &nonDummyNodes(){return m_nonDummy;}
 private:
 
 	
