@@ -69,14 +69,15 @@ int readCustomFormat(GridGraph &GG, Graph &G, std::string filename, int scaling 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	Graph G;
-	GridGraph GG(G);
+
+	/*GridGraph GG(G);	
 	readCustomFormat(GG,G,"GG.txt");
 	const Graph &H = GG.constGraph();	
 	std::cout << H.numberOfNodes();	
 	GUI gui(800,100);
 	gui.setGG(GG);
 	gui.start();	
-	gui.wait(100000);
+	gui.wait(100000);;*/
 	return 0;
 }
 

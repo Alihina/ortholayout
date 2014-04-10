@@ -3,7 +3,7 @@
 
 
 #include <GridGraph.h>
-
+#include "IPointComparer.h"//zur OutlineBerechnung
 
 unsigned int GridGraph::instanceCount = 0;
 
@@ -868,12 +868,405 @@ void GridGraph::clusterize(int p){
 	}
 };
 
+
 bool GridGraph::isDummy(node v){ //note: if you mess up and v is not even of this graph, it will com back as non-dummy
 	forall_listiterators(node,it,m_vConnect){
 		if (*it == v) return true;
 	}
 	return false;
 }
+
+bool GridGraph::isVisible(node v)//returns true if node is part of currently considered Layout
+{
+return true; //Fix Me
+}
+bool GridGraph::isVisible(edge v) //returns true if edge is part of currently considered Layout
+{
+return true; //Fix Me
+}
+bool GridGraph::isTemporary(node v) //returns true if node is currently being tested
+{
+return false; //Fix Me
+}
+bool GridGraph::isTemporary(edge e) //returns true if edge is currently being tested
+{
+return false; //Fix Me
+}
+
+
+
+//////////////////////////////////////////Funktionen zur Berechnung der OutlineArea//////////////////////
+int GridGraph::deleteAntennas(IPolyline& E)
+{	
+	int area=0;
+	ListIterator<IPoint> iter, next, onext, backiter;
+	//if the pattern ABA emerges, kill B and deal with all points after A. then backtrack A
+	for (iter = E.begin(); iter.valid(); ++iter) {
+		for( ; ; ) {
+			next  = iter; next++;
+			if (!next.valid()) break;
+			onext = next, onext++;
+			if (!onext.valid()) break;
+
+			if ((*iter) == (*onext)){
+				// von hier
+				area += (int)((*iter).distance((*next)));
+				//area=area+abs((*iter)-(*next));
+				// bis hier musst du was anderes machen: addiere so viele flächeneinheiten, wie der abstand
+				// von (*iter) bis (*next) ist
+				E.del(next);
+				E.del(onext);
+				--iter;
+				if (!iter.valid()) { //we don't want to fall off at the beginning.
+					iter = E.begin();
+				}
+
+			}
+			else
+				break;
+		}
+	} // antennae taken care of: outer antennae not belonging to the beginning or end.
+
+
+	while (true) {
+		iter = E.begin(); backiter = E.cyclicPred( E.begin());
+		iter++;	backiter--;
+		
+		if ((*iter)==(*backiter)) {
+			// handle the points!
+			//area=area+abs(E.front()-*iter)
+			area += (int)((E.front()).distance((*iter)));
+			// hier das gleiche mit den punkten E.front() und (*iter)
+			E.del(E.begin());
+			E.del(E.cyclicPred(E.begin()));
+			continue;
+		} 
+		break;
+	}
+
+	//TODO: maybe just make sure we got no consecutive duplicates in outline?? because that would mess things up
+
+	List<IPolyline> outlines;
+	ListIterator<IPoint> iiter, bbackiter;
+	IPolyline templine1, templine2;
+	for (iter = E.begin();iter != E.cyclicPred(E.begin());++iter) {
+		for (backiter = iter.pred();backiter.valid();--backiter) {
+			if ((*iter) == (*backiter)) { //we got something
+				iiter = iter; bbackiter = backiter;
+				while ((*(iiter.succ())) == (*(bbackiter.pred())) ) {
+					iiter = iiter.succ();
+					bbackiter = bbackiter.pred();
+				}
+				//handle the points here
+				IPolyline handle;
+				next = iter;
+				handle.pushBack(*next);
+				while (next != iiter) {
+					++next;
+					handle.pushBack(*next);
+				}
+				// "inneren" punkte der IPolyline handle verrechnen
+				// (die Summe der Abstände) -1 (glaub ich?)
+				ListIterator<IPoint> inner=handle.begin();
+				while (inner.succ().valid())
+				{ 
+					area+=(int)((*inner).distance((*inner.succ())));
+					inner++;
+				}
+				area=area-1;
+				E.split(iiter, E,templine2,after);
+				E.split(iter,E,templine1,after);
+				E.split(backiter,E,templine1,after);
+				templine1.pushFront(templine1.back());
+				outlines.pushBack(templine1);
+				E.split(bbackiter,E,templine1,after);
+				E.conc(templine2);
+				//iter = bbackiter;
+				//--iter; not sure better go with
+				iter = E.begin();
+
+				break;
+			}
+		}
+	}
+
+
+	ListIterator<IPolyline> listiter;
+	outlines.pushFront(E);
+
+	// then we normalize, i.e. delete those points not on a bend.
+
+
+	for (listiter = outlines.begin(); listiter.valid() ;++listiter ) {
+		for (iter = (*listiter).begin(); iter.valid(); ++iter) {
+			for( ; ; ) {
+				next  = iter; next++;
+				if (!next.valid()) break;
+				onext = next, onext++;
+				if (!onext.valid()) break;
+
+				int d1 = 0 , d2 = 0;
+
+				/*direction is as follows:
+				0 - not on an axis to another
+				1 - second point is to the right of first
+				then ccw up to 4, which is below*/
+				if ((*iter).m_x==(*next).m_x) {
+					if ((*iter).m_y <(*next).m_y){ d1 = 4; }
+					else { d1 = 2; }
+				}
+				else if ((*iter).m_y==(*next).m_y) {
+					if ((*iter).m_x <(*next).m_x){ d1 = 1; }
+					else { d1 = 3; }
+				}
+
+				if ((*next).m_x==(*onext).m_x) {
+					if ((*next).m_y <(*onext).m_y){ d2 = 4; }
+					else { d2 = 2; }
+				}
+				else if ((*next).m_y==(*onext).m_y) {
+					if ((*next).m_x <(*onext).m_x){ d2 = 1; }
+					else { d2 = 3; }
+				}
+				OGDF_ASSERT(d1>0 && d2>0);
+				// is *next on the way from *iter to *onext?
+				if (d1 == d2)
+					(*listiter).del(next);
+				else
+					break; /* while */
+			}
+		}
+
+		//      check that the endpoint is not an inner point.
+
+		iter = (*listiter).begin(); backiter = (*listiter).cyclicPred((*listiter).begin());
+		iiter = iter.succ(); bbackiter = backiter.pred();
+		int d1 = 0, d2 = 0;
+
+		if ((*iter).m_x==(*iiter).m_x) {
+			if ((*iter).m_y <(*iiter).m_y){ d1 = 4; }
+			else { d1 = 2; }
+		}
+		else if ((*iter).m_y==(*iiter).m_y) {
+			if ((*iter).m_x <(*iiter).m_x){ d1 = 1; }
+			else { d1 = 3; }
+		}
+
+		if ((*bbackiter).m_x==(*backiter).m_x) {
+			if ((*bbackiter).m_y <(*backiter).m_y){ d2 = 4; }
+			else { d2 = 2; }
+		}
+		else if ((*bbackiter).m_y==(*backiter).m_y) {
+			if ((*bbackiter).m_x <(*backiter).m_x){ d2 = 1; }
+			else { d2 = 3; }
+		}
+
+		if (d1 == d2) {
+			(*listiter).del(iter);
+			(*listiter).del(backiter);
+		}
+		else {
+			//sanitize endpoints, only wanna have one in there.
+			(*listiter).del((*listiter).cyclicPred((*listiter).begin()));
+		}
+	}
+
+
+	//concatenate all the lists again
+	listiter = outlines.begin();
+	++listiter;
+	while (listiter.valid()) {
+		outlines.front().conc(*listiter);
+		++listiter;
+	}
+	E = outlines.front();
+	// Und ab hier stehen in E nur noch die gewünschten punkte, fertig zum sortieren
+	return area;
+}
+
+List<int> GridGraph::unionLists(ogdf::List<int> prev, ogdf::List<int> curr)
+{
+        // calculates the union of two lists of ints that each describe a set of intervals
+     
+        List<int> u;
+        ListIterator<int> p, c;
+        p = prev.begin();
+        c = curr.begin();
+        int cursor;
+        bool prev_on = false, curr_on = false, writing = false, was_p = false;
+        //sanity check: everything even?
+        if (prev.size()%2!=0 || curr.size()%2!=0) {
+                //ya done goof'd
+                OGDF_ASSERT (1==0);
+                return u;
+        }
+        while (p.valid() || c.valid()) {
+                if (!p.valid()) {
+                        // c is valid
+                        cursor = *c;
+                        ++c;
+                        was_p = false;
+                }
+                else if (!c.valid()) {
+                        // p is valid
+                        cursor = *p;
+                        ++p;
+                        was_p = true;
+                }
+                else {
+                        //both are, interesting things happen.
+                        if (*p <= *c) {//hier stand vorher *q
+                                cursor = *p;
+                                ++p;
+                                was_p = true;
+                        }
+                        else {
+                                cursor = *c;
+                                ++c;
+                                was_p = false;
+                        }
+                }
+                if (was_p) {
+                        if (prev_on) {
+                                prev_on = false;
+                                if (!curr_on) {
+                                        writing = false;
+                                        u.pushBack(cursor);
+                                }
+                        }
+                        else { //!prev_on
+                                prev_on = true;
+                                if (!writing) {
+                                        writing = true;
+                                        u.pushBack(cursor);
+                                }
+                        }
+                }
+                else { // !was_p
+                        if (curr_on) {
+                                curr_on = false;
+                                if (!prev_on) {
+                                        writing = false;
+                                        u.pushBack(cursor);
+                                }
+                        }
+                        else { //!curr_on
+                                curr_on = true;
+                                if (!writing) {
+                                        writing = true;
+                                        u.pushBack(cursor);
+                                }
+                        }
+                }
+               
+        } //while
+        //sanitise, because doubles may happen.
+        ListIterator<int> it = u.begin(), itt, ittt;
+        while (it.valid()) {
+                itt = it.succ();
+                if (!itt.valid()) {break;}
+                ittt = itt.succ();
+                if (!ittt.valid()) {break;}
+                if (*itt == *ittt) {
+                        u.del(ittt); u.del(itt);
+                }
+                else {
+                        ++it;
+                }
+        }
+        OGDF_ASSERT(u.size()%2==0)
+        return u;
+}
+
+int GridGraph::prevarea(ogdf::List<int> previousline, int y)
+	//Berechne Anzahl Gitterpunkte von einer vereinigung von Boxen, die auf Vertikaler Linie y Punkte aufweist 
+	//und deren x Koordinaten durch die previousline festgelegt sind
+{   
+	OGDF_ASSERT(previousline.size()%2==0);
+	int area=0;
+    ogdf::ListIterator<int> it;                      //getestet
+	it=previousline.begin();  
+	while ( it.valid())                         //precondition: gerade Anzahl Elemente in der Liste; aufeinanderfolgende Zahlen stellen Intervall da. 
+	{											//diese müssen disjunkt sein.
+		area=area+*it.succ()-*it+1;
+		it++;it++;//gehe zwei Schritte Weiter und berechne neues Intervall dazu
+	}
+	area=area*y;	
+	return area;
+}  
+
+int GridGraph::rowarea(ogdf::List<int> previousline, ogdf::List<int> currentline)
+	//Berechne Fläche einer Zeile aus der Vereinigung der Intervalle
+	//die in den beiden Listen abgespeichert sind
+	//in currentline befindet sich nach Durchlauf der Whileschliefe die Vereinigung der Intervalle aus previousline und currentline
+{  
+	if (currentline.size()==0)
+	{
+		return prevarea(previousline, 1);
+	}
+	else
+	{
+	  return prevarea(unionLists(previousline, currentline) , 1);
+	}
+}
+
+int GridGraph::outlineArea(IPolyline Outline)
+{	int area=0; 
+    area=area+deleteAntennas(Outline);
+	StdComparer<IPoint> comp;//Outline nach y und danach nach x-Koordinate sortieren
+	Outline.quicksort(comp); 	
+	ogdf::List<int> currentList;
+	ogdf::List<int> previousList;
+	int current_y=Outline.front().m_y;
+	int previous_y=current_y-1;//Wir tun so, als gäbe es eine nullte Zeile ohne Flächeninhalt
+	int linearea=0;//area einer Zeile
+    ogdf::ListIterator<IPoint> it;
+	it=Outline.begin();
+
+
+	while ( it.valid())
+	{
+		current_y=(*it).m_y;
+		previousList=currentList;
+
+		while ((*it).m_y==current_y)//aktuelle Liste erneuern; Iterator befindet sich anschließend auf Element mit nächstgrößerer y-Koordinate
+		{
+			bool done = false;
+			for (ListIterator<int> iter = currentList.begin();iter.valid();++iter){
+				if (*iter == (*it).m_x  ) {
+					currentList.del(iter);
+					done = true;
+					break;
+				}
+				if (*iter > (*it).m_x) {
+					currentList.insertBefore((*it).m_x,iter);
+					done = true;
+					break;
+				}
+			}
+			if (!done) {
+				currentList.pushBack((*it).m_x);
+			}
+
+			++it;
+			if (!it.valid()) {
+				break;
+			}
+
+		}
+
+			area=area+rowarea(previousList,currentList);//bilde Vereinigung der Intervalle aus previousList und currentList und berechne Fläche der Vereinigung
+			if (previous_y!=current_y-1)//Veränderung um mehr als eine Zeile
+			{ 
+				area=area+prevarea(previousList, current_y-previous_y-1);
+			}
+			previous_y=current_y;	
+	}
+	return area;
+}
+
+////////////////////////////////////////////////das waren alle zur OutlineArea benötigten Funktionen/////////////////////
+
 
 
 
