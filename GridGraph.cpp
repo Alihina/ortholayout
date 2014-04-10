@@ -682,8 +682,9 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 	List<node> nondummys = GGw.nonDummyNodes();
 	while(!nondummys.empty()){
 		ListIterator<node> itw;
+		bool neighbor = false;
 		forall_nonconst_listiterators(node,it,nondummys){//pick nondummys whose original neighbor an original of v
-			bool neighbor = false;
+			
 			List<node> originals = GGw.original(*it);
 			forall_listiterators(node,it2,originals){ 
 				adjEntry adj;
@@ -697,9 +698,8 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 				break;
 			}
 		}
-	}
-	forall_listiterators(node,it,GGw.nonDummyNodes()){
-		node w = *it;		
+		if (!neighbor) while(true) std::cout << " oh no! "; //ERROR HANDLING LIKE A BOSS!
+		node w = *itw;		
 		GridGraph * p_srcGG = GridGraph_of(w); //pointer to w's subGG	
 		if (p_srcGG){ //if w is its own Cluster
 			moveToCluster(*p_srcGG, v);  //that doesn't mean I don't have to consider all adjacent edges of w!
@@ -735,25 +735,29 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 		forall_adj(adj, w){ //note that only real edges to non-dummy nodes should be considered and all of them transferred to v
 			edge e = adj->theEdge(); //the adjacent edge
 			node n = adj->twinNode(); // the neighbor;
-			if (!GGw.isDummy(n)){ // e must be deleted and its attributes transferred to the edge in cluster v
-				delEdges.pushFront(e);
-				IPoint vPos = getPos(v); //relative to this-level GridGraph;
-				IPoint GGwPos = GGw.getPos(); //relative to top-level GridGraph;
-				IPolyline e_edgeline = m_edgeline[e];			
-				forall_nonconst_listiterators(IPoint, it, e_edgeline){
-					(*it).m_x = ((*it).m_x +GGwPos.m_x) - getPos().m_x - vPos.m_x;
-					(*it).m_y = ((*it).m_y +GGwPos.m_y) - getPos().m_y - vPos.m_y;					
-				}
-				GG.edgeline[GG.Copy(GGw.original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
-				forall_listiterators(edge,it,GGw.original(e)){ //delete reference to e from m_eCopy edgeArray;
-					GGw.m_eCopy[*it] = NULL;
-				}
+			if(isDummy(n)){
+				if (!(Copy(GGw.original(e).front()->opposite(original(w).front())) == v ) )continue;
+				// i.e. even if n is dummy, if the edge in this connected at n goes to v, continue
 			}
+
+			delEdges.pushFront(e);
+			IPoint vPos = getPos(v); //relative to this-level GridGraph;
+			IPoint GGwPos = GGw.getPos(); //relative to top-level GridGraph;
+			IPolyline e_edgeline = m_edgeline[e];			
+			forall_nonconst_listiterators(IPoint, it, e_edgeline){
+				(*it).m_x = ((*it).m_x +GGwPos.m_x) - getPos().m_x - vPos.m_x;
+				(*it).m_y = ((*it).m_y +GGwPos.m_y) - getPos().m_y - vPos.m_y;					
+			}
+			GG.m_edgeline[GG.Copy(GGw.original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
+			forall_listiterators(edge,it,GGw.original(e)){ //delete reference to e from m_eCopy edgeArray;
+				GGw.m_eCopy[*it] = NULL;
+			}
+
 		}
 		forall_listiterators(edge,it,delEdges){
 			GGw.delEdge(*it);
 		}
-		
+
 		//int pos = GGw.m_nonDummy.search(w);
 		//std::cout << "w is " << w << std::endl;
 		/*if (pos == -1){
@@ -767,6 +771,8 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 		}*/
 		//GGw.m_nonDummy.del(m_nonDummy.get(pos)); //no reason to delete + it might mess up the forall_nodes loop
 		//GGw.delNode(w);
+
+		nondummys.del(itw);
 	}
 
 }
@@ -811,8 +817,9 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 				(*it).m_x -= vPos.m_x;
 				(*it).m_y -= vPos.m_y;
 			}
-			GG.edgeline[GG.Copy(original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
+			GG.m_edgeline[GG.Copy(original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
 			forall_listiterators(edge,it,original(e)){ //delete reference to e from m_eCopy edgeArray;
+				std::cout << "deleting reference in m_eCopy to " << *it << std::endl;
 				m_eCopy[*it] = NULL;
 			}
 		}else{ // e must be reconnected from w to v and its attributes transferred.			
@@ -861,7 +868,12 @@ void GridGraph::clusterize(int p){
 	}
 };
 
-
+bool GridGraph::isDummy(node v){ //note: if you mess up and v is not even of this graph, it will com back as non-dummy
+	forall_listiterators(node,it,m_vConnect){
+		if (*it == v) return true;
+	}
+	return false;
+}
 
 
 
