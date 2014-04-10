@@ -3,7 +3,7 @@
 
 
 #include <GridGraph.h>
-#include "IPointComparer.h"//zur OutlineBerechnung
+
 
 unsigned int GridGraph::instanceCount = 0;
 
@@ -678,6 +678,9 @@ edge GridGraph::addEdge(edge orig){
 
 
 void GridGraph::moveToCluster(GridGraph &GGw, node v){ 
+	std::cout << "moving into " << v << "the following Cluster: " << std::endl;
+	GGw.displayDebug();
+
 	GridGraph &GG = *GridGraph_of(v); //this will always work if this function is only called by moveToCluster(node w, node v);
 	List<node> nondummys = GGw.nonDummyNodes();
 	while(!nondummys.empty()){
@@ -700,6 +703,7 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 		}
 		if (!neighbor) while(true) std::cout << " oh no! "; //ERROR HANDLING LIKE A BOSS!
 		node w = *itw;		
+		std::cout << "moving node " << w << std::endl;
 		GridGraph * p_srcGG = GridGraph_of(w); //pointer to w's subGG	
 		if (p_srcGG){ //if w is its own Cluster
 			moveToCluster(*p_srcGG, v);  //that doesn't mean I don't have to consider all adjacent edges of w!
@@ -728,15 +732,19 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 		}
 		
 
-
 		//Consider all adj edges of w
 		adjEntry adj;
 		List<edge> delEdges;
 		forall_adj(adj, w){ //note that only real edges to non-dummy nodes should be considered and all of them transferred to v
 			edge e = adj->theEdge(); //the adjacent edge
 			node n = adj->twinNode(); // the neighbor;
+			std::cout << "adj edge " << e << " neighbor "<< n << std::endl;
 			if(isDummy(n)){
-				if (!(Copy(GGw.original(e).front()->opposite(original(w).front())) == v ) )continue;
+				std::cout << "n is Dummy, will continue" << std::endl;
+				if (!(Copy(GGw.original(e).front()->opposite(original(w).front())) == v ) ){
+					std::cout << "oops, dummy represents edge that connects to v, will not continue" << std::endl;
+					continue;
+				}
 				// i.e. even if n is dummy, if the edge in this connected at n goes to v, continue
 			}
 
@@ -748,10 +756,16 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 				(*it).m_x = ((*it).m_x +GGwPos.m_x) - getPos().m_x - vPos.m_x;
 				(*it).m_y = ((*it).m_y +GGwPos.m_y) - getPos().m_y - vPos.m_y;					
 			}
-			GG.m_edgeline[GG.Copy(GGw.original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
-			forall_listiterators(edge,it,GGw.original(e)){ //delete reference to e from m_eCopy edgeArray;
-				GGw.m_eCopy[*it] = NULL;
-			}
+			std::cout << "edge " << e << std::endl;
+			edge origedge = GGw.original(e).front();
+			std::cout << "origedge " << origedge << std::endl;
+			edge GGedge = GG.Copy(origedge);
+			std::cout << "GGedge " << GGedge << std::endl;
+			GG.m_edgeline[GGedge] = e_edgeline; //this should adress the correct edge in  cluster v
+			//forall_listiterators(edge,it,GGw.original(e)){ //delete reference to e from m_eCopy edgeArray;
+			//	GGw.m_eCopy[*it] = NULL;
+			//}
+			m_eCopy[original(e).front()] = NULL; //fixes the symptom, ignores the cause, could lead to trouble
 
 		}
 		forall_listiterators(edge,it,delEdges){
@@ -777,7 +791,8 @@ void GridGraph::moveToCluster(GridGraph &GGw, node v){
 
 }
 
-void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!		
+void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!	
+	std:cout << "moving " << w << " into " << v << std::endl;
 	if (GridGraph_of(v) == NULL) { // create a new subGG if needed
 		GridGraph newGG = GridGraph(*m_pGraph, m_vOrig[v].front());		
 		m_GGList.pushFront(newGG);		
@@ -818,10 +833,11 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 				(*it).m_y -= vPos.m_y;
 			}
 			GG.m_edgeline[GG.Copy(original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
-			forall_listiterators(edge,it,original(e)){ //delete reference to e from m_eCopy edgeArray;
-				std::cout << "deleting reference in m_eCopy to " << *it << std::endl;
-				m_eCopy[*it] = NULL;
-			}
+			//forall_listiterators(edge,it,original(e)){ //delete reference to e from m_eCopy edgeArray;
+			//	std::cout << "deleting reference in m_eCopy to " << *it << std::endl;
+			//	m_eCopy[*it] = NULL;
+			//}
+			m_eCopy[original(e).front()] = NULL; //fixes the symptom, ignores the cause, could lead to trouble
 		}else{ // e must be reconnected from w to v and its attributes transferred.			
 			if (e->source() == w) moveSource(e,v);
 			if (e->target() == w) moveTarget(e,v);
