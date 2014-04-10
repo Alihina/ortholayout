@@ -10,10 +10,21 @@
 #include <OGDF/basic/Array.h>
 #include <Lattice.h>
 #include <OLDGrid.h>
+#include "IPointComparer.h"//zur OutlineBerechnung
 
 
 
 using namespace ogdf;
+
+//Änderungen von Annette
+/*
+Funtion "isDummy(node)" public gemacht statt protected
+Funktionen zur Berechnung der OutlineArea hinzugefügt
+HiddenNode hinzugefügt und die entsprechende getFunktion
+in der cpp-Datei:
+isVisible-Funktionen vorläufig hinzugefügt, visible gibt true, alle anderen false zurück
+isDummy hinzugefügt, gibt false zurück
+*/
 
 /**
 Open Problems:
@@ -64,7 +75,6 @@ protected:
 	List<edge> m_eOutgoing; //!< list of outgoing edges of the graph. The edges in this list belong to the original Graph.
 	List<node> m_vConnect; //!< list of dummynodes on the outline that specify the position of the connection for the outgoing edges. The order must be the same as m_eOutgoing.
 	node getConnectNode(edge e);
-	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
 	List<node> m_nonDummy; //! list of all non-dummy nodes
 
 	NodeArray<GridGraph *> m_vGridGraph; //!< Pointer to the corresponding GridGraph element that the nodes represent, NULL if node is atomic
@@ -86,6 +96,7 @@ protected:
 	//IPolyline m_outline; //The Shape of the Gridgraph (not necessarily maintained throughout annealing)
 	Lattice m_lattice;
 	
+	node m_HiddenNode;
 	NodeArray<char> m_vState; //returns -1 if node is invisible, 1 if node is temporary, 0 else 
 	EdgeArray<char> m_eState; //returns -1 if edge is invisible, 1 if edge is temporary, 0 else
 
@@ -127,6 +138,9 @@ public:
 	bool isVisible(edge v); //returns true if edge is part of currently considered Layout
 	bool isTemporary(node v); //returns true if node is currently being tested
 	bool isTemporary(edge e); //returns true if edge is currently being tested
+	node getHiddenNode(){return m_HiddenNode;};
+	List<node> &nonDummyNodes(){return m_nonDummy;};
+	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
 
 	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
@@ -193,6 +207,14 @@ public:
 	void setEdgeline(edge e, IPolyline line){m_edgeline[e] = line;}; // manually set the edgeline without consideration for the Grid	//EIGENTLICH OBSOLET
 	//IPolyline &getOutline(){return m_outline;}; implemented above
 	IPolyline &getOutline(node v){return m_vOutline[v];};
+
+	////////////////////////zum Berechnen der outlineArea////////////////////////
+	static int deleteAntennas(IPolyline& E);
+	static List<int> unionLists(ogdf::List<int> prev, ogdf::List<int> curr);
+	static int prevarea(ogdf::List<int> previousline, int y);
+	static int rowarea(ogdf::List<int> previousline, ogdf::List<int> currentline);
+	static int outlineArea(IPolyline Outline);
+	/////////////////////////////////////////////////////
 
 	List<GridGraph> &GGList(){return m_GGList;};
 	GridGraph * subGG(node v){return m_vGridGraph[v];};

@@ -8,16 +8,17 @@ namespace ogdf {
 
 	class BoundingBoxSize: public Grid_EnergyFunction {
 	public:
+		BoundingBoxSize(const String &funcname, GridGraph &GG);
 		//! computes energy for the layout at the beginning of the optimization process
-		void computeEnergy()=0;
+		void computeEnergy();
 		static double calcBoxArea(IPolyline &Box);
 	protected:
 
 		//! changes the data of a specific energy function if the candidate was taken
-		void internalCandidateTaken() = 0;
+		void internalCandidateTaken();
 
 		//! computes the energy of the configuration with the considered testvertex and sets the value of m_candidateEnergy.
-		void compCandEnergy()=0;
+		void compCandEnergy();
 
 	};
 

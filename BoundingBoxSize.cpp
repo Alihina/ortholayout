@@ -10,6 +10,11 @@ using namespace ogdf;
 /**/ //INT_MIN std::
 
 //! computes energy for the layout at the beginning of the optimization process
+BoundingBoxSize::BoundingBoxSize(const String &funcname, GridGraph &GG):
+Grid_EnergyFunction(funcname,GG)
+{
+}
+
 void BoundingBoxSize::computeEnergy()
 {
 	IPolyline Box;      

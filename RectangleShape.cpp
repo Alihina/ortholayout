@@ -5,7 +5,11 @@
 
 using namespace ogdf;
 
-
+RectangleShape::RectangleShape(const String &funcname, GridGraph &GG):
+Grid_EnergyFunction(funcname,GG)
+{
+	m_Outline=m_GG.getOutline();
+}
 
 //! computes energy for the layout at the beginning of the optimization process
 void RectangleShape::computeEnergy()
@@ -17,14 +21,16 @@ void RectangleShape::computeEnergy()
 //! computes the energy of the configuration with the considered testvertex and sets the value of m_candidateEnergy.
 void RectangleShape::compCandEnergy()
 {
-	IPolyline Box;      
-    Box = m_GG.getBox();
-	m_candidateEnergy=BoundingBoxSize::calcBoxArea(Box);
+	if (m_GG.getOutline()!=m_Outline)
+	{
+		m_candidateEnergy=BoundingBoxSize::calcBoxArea(m_GG.getBox())-GridGraph::outlineArea(m_GG.getOutline());
+	}
+
 }
 
 void RectangleShape::internalCandidateTaken()
 {
-	;
+	m_Outline=m_GG.getOutline();;
 }
 
 

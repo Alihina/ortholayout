@@ -9,6 +9,11 @@ using namespace ogdf;
 
 //! computes energy for the layout at the beginning of the optimization process
 
+CombinedEdgeLength::CombinedEdgeLength(const String &funcname, GridGraph &GG):
+Grid_EnergyFunction(funcname,GG)
+{
+}
+
 int CombinedEdgeLength::calcEdgeLength(edge e)
 { //the length of an edge is sum of the eukledian length of the edgesegments.
 	int result;
@@ -31,7 +36,10 @@ void CombinedEdgeLength::computeEnergy()
 	edge currentedge ;
 	forall_edges(currentedge, m_GG)
 	{
-		if ((m_GG.isVisible(currentedge)==true)||(m_GG.isTemporary(currentedge)==true))
+		if (
+			((m_GG.isVisible(currentedge)==true)||(m_GG.isTemporary(currentedge)==true))
+			&&( !(m_GG.isDummy(currentedge->source()))&& !(m_GG.isDummy(currentedge->target())) )//ignoriere Kanten von Dummeknoten
+			)
 		{
 			m_energy=m_energy+calcEdgeLength(currentedge);
 		}
@@ -46,13 +54,19 @@ void CombinedEdgeLength::compCandEnergy()
 	edge e;
 	int oldedges=0;
 	forall_adj_edges(e, m_GG.getHiddenNode())
-	{
-		oldedges=oldedges+calcEdgeLength(e);
+	{  
+		if( !(m_GG.isDummy(e->source()))&& !(m_GG.isDummy(e->target())) )
+		{
+			oldedges=oldedges+calcEdgeLength(e);
+		}
 	}
 	int newedges=0;
 	forall_adj_edges(e,testNode())
 	{
-		newedges=newedges+calcEdgeLength(e);
+		if( !(m_GG.isDummy(e->source()))&& !(m_GG.isDummy(e->target())) )
+		{
+			newedges=newedges+calcEdgeLength(e);
+		}
 	}
 
 	m_candidateEnergy=m_energy-oldedges+newedges;

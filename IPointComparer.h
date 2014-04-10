@@ -7,9 +7,13 @@
 
 namespace ogdf{
 
-	template<> class StdComparer<IPolyline> {
+	template<> class StdComparer<IPoint> {
 	public:
-		static IPolyline less (const IPolyline &a, const IPolyline &b);
+		static bool less (const IPoint &a, const IPoint &b);
+		/*static IPoint geq  (const IPoint &a, const IPoint &b);
+		static IPoint greater (const IPoint &a, const IPoint &b);
+		static IPoint eq (const IPoint &a, const IPoint &b);
+		static IPoint equal  (const IPoint &a, const IPoint &b);*/
 	};
 
 }
