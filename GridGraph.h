@@ -80,6 +80,7 @@ protected:
 	NodeArray<GridGraph *> m_vGridGraph; //!< Pointer to the corresponding GridGraph element that the nodes represent, NULL if node is atomic
 	List<GridGraph> m_GGList; //List where the sub GridGraphs are saved.
 	
+	IPoint m_pos; //position of this GG's origin in coordinates of the topmost GG
 	DPoint m_dPos; //position of this GG's origin in coordinates of the topmost GG
 	NodeArray<int> m_x; //x-coord of the upperleft corner of the nodes 
 	NodeArray<int> m_y; //y-coord of the upperleft corner of the nodes
@@ -99,8 +100,8 @@ protected:
 	node m_HiddenNode;
 	NodeArray<char> m_vState; //returns -1 if node is invisible, 1 if node is temporary, 0 else 
 	EdgeArray<char> m_eState; //returns -1 if edge is invisible, 1 if edge is temporary, 0 else
-
-
+	
+	bool m_IOprep; //shows if GG has been prepared by GraphIO for GUI output;
 	/*starting with node v find a cluster of nodes and merge to a single node and GridGraph. 
 	The parameter p indicates how close the cluster should be. 
 	*/	
@@ -109,6 +110,7 @@ public:
 	void findCluster(node v, int p); 
 	List<node> findClusterRecurse(List<node> cluster, int p);
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
+	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
 
 	List<node> GridGraph::trimCluster(List<node> U, node v);
 private:
@@ -127,7 +129,7 @@ public:
 	
 	node addNode(node orig); //adds a node, returns the new node, takes care of consequential edges and connections
 	edge addEdge(edge orig); //never used (?)
-	
+	void displayDebug();
 	//returns a pointer to the Gridgraph represented by node v;
 	GridGraph * GridGraph_of(node v){return m_vGridGraph[v];};
 
@@ -178,10 +180,11 @@ public:
 	GETTTERS AND SETTERS	
 	*/
 
-	//! Returns a reference to the associated graph
-	const Graph& constGraph() const {
-		return *m_pGraph;
-	}
+	
+	bool &IOprep(){return m_IOprep;};
+	const Graph& constGraph() const {return *m_pGraph;}
+	List<node> &nonDummyNodes(){return m_nonDummy;}
+
 	unsigned int id() const{return m_id;};
 	int &x(node v){return m_x[v];};
 	int &y(node v){return m_y[v];};
@@ -189,6 +192,7 @@ public:
 	double &dy(node v){return m_dy[v];};
 			
 	IPoint getPos(node v){return IPoint(m_x[v],m_y[v]);}; //!< position of node v (NOT NECESSARILY upper-left corner of the bounding box, just origin of GG coord-sys)
+	IPoint &getPos(){return m_pos;};
 	void setPos(node v, IPoint pos){m_x[v] = pos.m_x; m_y[v] = pos.m_y;}; //!< Set the position of node v without consideration for the Grid
 	DPoint &dPos(){return m_dPos;}; //position of GG's origin in relation to global coord
 

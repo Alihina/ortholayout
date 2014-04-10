@@ -172,7 +172,7 @@ private:
 
 
 	void copyAttributes(GraphAttributes &srcGA, GraphCopy &srcGC, GraphAttributes &trgGA, GraphCopy &trgGC);	
-	void prepareGG(GridGraph &GG,DPoint pos); //assigns the continuous variants pos and rot of GG
+	void prepareGG(GridGraph &GG); //assigns the continuous variants pos and rot of GG
 
 
 	void animate();	
@@ -189,6 +189,7 @@ private:
 	void drawNode(GridGraph &GG, node v, int alpha);
 	void drawEdge(GridGraph &GG, edge e, int alpha);
 	void drawOutline(IPolyline outline, DPoint pos);
+	void drawGG(GridGraph &GG);
 
 	void clrscr();
 
