@@ -183,7 +183,6 @@ public:
 	
 	bool &IOprep(){return m_IOprep;};
 	const Graph& constGraph() const {return *m_pGraph;}
-	List<node> &nonDummyNodes(){return m_nonDummy;}
 
 	unsigned int id() const{return m_id;};
 	int &x(node v){return m_x[v];};
