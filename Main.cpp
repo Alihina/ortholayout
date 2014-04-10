@@ -1,7 +1,7 @@
 // GraphDrawingProject.cpp : Definiert den Einstiegspunkt für die Konsolenanwendung.
 //
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include <ogdf/basic/Graph.h>
 #include <ogdf/basic/GraphAttributes.h>
 #include <GraphIO.h>
