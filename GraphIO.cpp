@@ -1092,6 +1092,11 @@ void GraphIO::OnKeydown(){
 		case SDLK_LCTRL:
 			key_strg = true;
 			break;
+		case SDLK_i:
+			forall_listiterators(node,it,selNodes){
+				displayNodeInformation(*it);
+			}
+			break;
 		case SDLK_n:
 			std::cout << " asdf  " << std::endl;
 			forall_listiterators(edge,it2,selEdges){
@@ -1142,6 +1147,8 @@ if (GridMode){
 	std::cout << "=================================================================" << std::endl;
 	std::cout << "Node Attributes" << std::endl;
 	std::cout << "=================================================================" << std::endl;
+	node test;
+	forall_nodes(test,currentGG) if (test == v) std::cout << "v is of currentGG!" << std::endl;
 	std::cout << "node: " << v ;
 	std::cout << " [" << currentGG.x(v) << ":" << currentGG.y(v) << "]";
 	std::cout << " (" << currentGG.dx(v) << ":" << currentGG.dy(v) << ")" << std::endl;	
@@ -1580,7 +1587,7 @@ void::GraphIO::drawGG(GridGraph &GG){
 	}
 	//std::cout << "drawing " << G.numberOfNodes() << " nodes" << std::endl;
 
-	forall_edges(e,GG) drawEdge(currentGG,e,ealpha[e]);
+	forall_edges(e,GG) drawEdge(GG,e,ealpha[e]);
 	forall_listiterators(node,it,GG.nonDummyNodes()){
 		v = *it;
 		if (GG.subGG(v)) drawGG(*GG.subGG(v));// std::cout << "Do something here" << std::endl; // call drawOutline(IPolyline outline, DPoint pos);
@@ -1763,7 +1770,27 @@ void GraphIO::drawEdge(GridGraph &GG, edge e, int alpha) {
 	for(ListIterator<DPoint> it = GG.dedgeline(e).begin().succ(); it.valid() ; it = it.succ()){ //go through bendpoints
 		p1 = p2;
 		p2 = g2v(*it + GG.dPos()); //get(i) returns an iterator, the * operator is needed to adress the element it points to
-		SDL_RenderDrawLine(rend, p1.m_x, p1.m_y, p2.m_x, p2.m_y);	
+				int size = 1;
+		if (p1.m_x < p2.m_x) {
+			p1.m_x -= size;
+			p2.m_x += size;
+		}
+		else{
+			p2.m_x -= size;
+			p1.m_x += size;
+		}
+		if (p1.m_y < p2.m_y) {
+			p1.m_y -= size;
+			p2.m_y += size;
+		}
+		else{
+			p2.m_y -= size;
+			p1.m_y += size;
+		}
+		SDL_Rect edgeRect = {p1.m_x, p1.m_y, p2.m_x-p1.m_x, p2.m_y-p1.m_y};
+		/*SDL_Rect edgeRect = {20,20,200,200};*/
+		SDL_RenderFillRect(rend, &edgeRect);
+
 	}
 
 	SDL_SetRenderDrawColor(rend, oldr, oldg, oldb, olda); //Reset render color to previous value 	
