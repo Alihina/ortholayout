@@ -98,7 +98,7 @@ protected:
 public:
 	void findCluster(node v, int p); 
 	List<node> findClusterRecurse(List<node> cluster, int p);
-	void moveToCluster(GridGraph &GGw, node w, node v); //merges w (node of GGw) to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
+	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
 	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
 
 	List<node> GridGraph::trimCluster(List<node> U, node v);
