@@ -56,6 +56,7 @@ public:
 	*/
 	//CHANGED: findeEdge now returns a bool: false: no edge found, true: the edge is now saved in the new argument, line.
 	bool findEdge(IPoint A, IPoint B, IPolyline &line);  
+	bool findEdge(IPoint A, IPolyline outline, IPolyline &line);
 	//CHANGED: camelcase'd these next six names
 	void registerPoint(IPoint A);
 	void registerLine(IPolyline E);

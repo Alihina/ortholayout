@@ -6,7 +6,7 @@
 #include <OGDF/basic/Thread.h>
 #include <OGDF/basic/Array2D.h>
 #include <ogdf/basic/Queue.h>
-
+//#include "IPointComparer"  //einkommentieren, ich hab die datei grad nicht da.
 
 using namespace ogdf;
 
@@ -91,6 +91,7 @@ bool Grid::findEdge(IPoint A, IPoint B, IPolyline &line) { // The IPolyline cont
 		forall_adj_edges(e,n) {
 			m = e->opposite(n);
 			if (visited[m] == false) {
+				parent[m] = n;
 				bfsqueue.append(m);
 				visited[m]=true;
 			}
@@ -154,6 +155,150 @@ bool Grid::findEdge(IPoint A, IPoint B, IPolyline &line) { // The IPolyline cont
 
 	line.reverse(); //line is now pointing in the correct direction
 	return true;
+}
+
+bool Grid::findEdge(IPoint A, IPolyline outline, IPolyline &line) {
+	line.clear();
+	//check what the outline is.
+	List<IPoint> outpoints;
+	ListIterator<IPoint> it = outline.begin();
+	outpoints.pushBack((*it));
+	IPoint last = *it;
+	++it;
+	OGDF_ASSERT(last != *it);
+	while (it.valid()) {
+		outpoints.pushBack((*it));
+		if (last.m_x == (*it).m_x) { //same x, so vertical line.
+			int i, j;
+			if (last.m_y < (*it).m_y) {
+				i = last.m_y + 1;
+				j = (*it).m_y;
+			}
+			else {
+				i = (*it).m_y + 1;
+				j = last.m_y;
+			}
+			for (; i < j;++i) {
+				outpoints.pushBack(IPoint(last.m_x,i));
+			}
+		}
+		else if (last.m_y == (*it).m_y) { //same y, so horizontal line.
+			int i, j;
+			if (last.m_x < (*it).m_x) {
+				i = last.m_x + 1;
+				j = (*it).m_x;
+			}
+			else {
+				i = last.m_x + 1;
+				j = (*it).m_x;
+			}
+			for (; i < j; ++i) {
+				outpoints.pushBack(IPoint(i,last.m_y));
+			}
+		}
+		else {
+			OGDF_ASSERT(1==0);
+		}
+		IPoint last = *it;
+		++it;
+	}
+	//we now have the outpoints
+	//check if we're on the outline, if so return true
+	for (it = outpoints.begin();it.valid();++it) {
+		if (A == *it) { return true; } //line is still empty, as it should.
+	}
+	Queue<node> bfsqueue;
+	NodeArray<bool> visited(*this,false);
+	NodeArray<node> parent(*this,NULL);
+	visited[m_Grid(A.m_x,A.m_y).v_node] = true;
+	visited[m_Grid(A.m_x,A.m_y).h_node] = true;
+	bool found = false;
+	IPoint c; //the cursor that tracks where we are while finding back
+	node n,m;
+	n = NULL;
+	edge e;
+	while (!bfsqueue.empty()) { //bfsloop
+		n = bfsqueue.pop();
+
+		for (it = outpoints.begin();it.valid();++it){
+			if (n==m_Grid((*it).m_x,(*it).m_y).h_node){
+				found = true;
+				break; //we're done!
+			}
+			if (n==m_Grid((*it).m_x,(*it).m_y).v_node){
+				found = true;
+				break; //we're done!
+			}
+		}
+		
+		forall_adj_edges(e,n) {
+			m = e->opposite(n);
+			if (visited[m] == false) {
+				parent[m] = n;
+				bfsqueue.append(m);
+				visited[m]=true;
+			}
+		}
+	}
+	if (!found){
+		//we're in deep shit, no way possible.
+		return false; 
+	}
+
+	//find the way back now!
+	
+	while (n!=NULL){
+		c = IPoint(x_coord[n],y_coord[n]);
+		if (c != line.back()) {
+			line.pushBack(c);
+		}
+		n=parent[n];
+	}
+	
+	//normalize the line, so we don't have a point everywhen.
+	ListIterator<IPoint> iter, next, onext;
+	for (iter = line.begin(); iter.valid(); ++iter) {
+		for( ; ; ) {
+			next  = iter; next++;
+			if (!next.valid()) break;
+			onext = next, onext++;
+			if (!onext.valid()) break;
+
+			int d1=0, d2=0;
+
+			/*direction is as follows: 
+			0 - not on an axis to another
+			1 - second point is to the right of first
+			then ccw up to 4, which is below*/
+			if ((*iter).m_x==(*next).m_x) {
+				if ((*iter).m_y <(*next).m_y){ d1 = 4; }
+				else { d1 = 2; }
+			}
+			else if ((*iter).m_y==(*next).m_y) {
+				if ((*iter).m_x <(*next).m_x){ d1 = 1; }
+				else { d1 = 3; }
+			}
+
+			if ((*next).m_x==(*onext).m_x) {
+				if ((*next).m_y <(*onext).m_y){ d2 = 4; }
+				else { d2 = 2; }
+			}
+			else if ((*next).m_y==(*onext).m_y) {
+				if ((*next).m_x <(*onext).m_x){ d2 = 1; }
+				else { d2 = 3; }
+			}
+			OGDF_ASSERT(d1>0 && d2>0);
+			// is *next on the way from *iter to *onext?
+			if (d1 == d2)
+				line.del(next);
+			else
+				break; /* while */
+		}
+	}
+
+	line.reverse(); //line is now pointing in the correct direction
+	return true;
+
 }
 
 void Grid::registerPoint(IPoint A) {

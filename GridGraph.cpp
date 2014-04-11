@@ -331,6 +331,85 @@ GridGraph& GridGraph::operator=(const GridGraph& GG){
 	return *this;
 }
 
+void GridGraph::acceptPos() {
+	//we need to keep temporary
+	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();++it) {
+		if (m_vState[(*it)]==1) { m_vState[(*it)]=0; }
+	}
+	edge e;
+	for ((e)=firstEdge();(e);(e)=(e)->succ()) {
+		if (m_eState[e]==1) { m_eState[e]=0; }
+	}
+
+	ListIterator<node> itt;
+	//delete invisible
+	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();it=itt) {
+		itt = it.succ();
+		if (m_vState[(*it)]==-1) { delNode(*it);}
+	}
+	edge f;
+	for ((e)=firstEdge();(e);(e)=(f)) {
+		(f)= (e)->succ();
+		if (m_eState[e]==-1) { delEdge(e); }
+	}
+
+}
+
+void GridGraph::rejectPos() {
+	//and delete temprary
+	ListIterator<node> itt;
+	//delete invisible
+	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();it=itt) {
+		itt = it.succ();
+		if (m_vState[(*it)]==1) { 
+			m_Grid.restoreFill(outline von (*it));
+			delNode(*it);
+		}
+
+	}
+	edge f;
+	for ((e)=firstEdge();(e);(e)=(f)) {
+		(f)= (e)->succ();
+		if (m_eState[e]==1) {
+			m_Grid.restoreline(outline von (e));
+			delEdge(e); 
+		}
+	}
+
+	//keep invisible
+	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();++it) {
+		if (m_vState[(*it)]==-1) { 
+			m_Grid.registerfill(outline von (*it));
+			m_vState[(*it)]=0; 
+		}
+	}
+	edge e;
+	for ((e)=firstEdge();(e);(e)=(e)->succ()) {
+		if (m_eState[e]==-1) {
+			m_Grid.registerline(outline von ((e)));
+			m_eState[e]=0; 
+		}
+	}
+	
+}
+
+bool tryMove(node v, IPoint pos, int rotation, int mirror) {
+	//find out the position to go to and see if it's free:
+	//determine outline movingto
+
+	//m_Grid.release the outline of v and its edges
+	if (!m_Grid.isFree(movingto)) {
+		return false;
+	}
+	//m_Grid.register movingto
+	//make the new vertex in out GridGraph
+		//and fill all the nodeArrays and lists
+	//then try to connect the edges, see if that works. 
+		//if it does, register the line, make a new edge and fill all the EdgeArrays and stuff
+	//also fail if any of the edges are too short to contain all the degree-2-verts
+	//also somehow keep track of how many edges go through an edge.
+	
+}
 
 IPolyline GridGraph::getBox(){
 	int min_x = 10000;
@@ -751,7 +830,10 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 }; 			
 void GridGraph::init(){};
 
-bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror){return false;};
+//bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror)
+//{
+//	grid machen, 
+//};
 IPoint GridGraph::getConnection(edge e){return IPoint(0,0);};
 
 void GridGraph::clusterize(int p){	
@@ -782,32 +864,38 @@ void GridGraph::clusterize(int p){
 
 
 
-//SA_Grid::SA_Grid(){
-//	//set default settings
-//}; 
-//void SA_Grid::call(GridGraph &GG){
-//	m_GG = &GG;
-//	doWork();
-//};
-//void SA_Grid::doWork(){
-//	node v;
-//	ListIterator<SA_Grid> it;
-//	List<SA_Grid> threads;
-//	forall_nodes(v,*m_GG){
-//		SA_Grid newthread;
-//		threads.pushFront(newthread);
-//		//maybe change some settings based on stuff like size of m_GG->Gridgraph(v) or something
-//		newthread.call(m_GG->GridGraph_of(v));
-//	}
-//	//wait for all threads to finish, preferably using ogdf::Thread features
-//	
-//	//maybe output the recursiondepth and the calculation time;
-//	startAnnealing();
-//
-//	
-//}; 
-//unsigned long SA_Grid::startAnnealing(){
-//	//do fancy stuff
-//	return 0;
-//}; 
-//
+SA_Grid::SA_Grid(){
+	//set default settings
+}; 
+void SA_Grid::call(GridGraph &GG){
+	m_GG = &GG;
+	doWork();
+};
+void SA_Grid::doWork(){
+	node v;
+	ListIterator<SA_Grid> it;
+	List<SA_Grid> threads;
+	forall_nodes(v,*m_GG){
+		SA_Grid newthread;
+		threads.pushFront(newthread);
+		//maybe change some settings based on stuff like size of m_GG->Gridgraph(v) or something
+		newthread.call(m_GG->GridGraph_of(v));
+	}
+	//wait for all threads to finish, preferably using ogdf::Thread features
+	
+	//maybe output the recursiondepth and the calculation time;
+	startAnnealing();
+
+	
+}; 
+unsigned long SA_Grid::startAnnealing(){
+	GG.init()
+	GridDH dh();
+	Grid_EnergyFunction * blubb = new Art von energyfunction(); //und andere
+	dh.addEnergyFunction(blubb, weight.); //TODO gute weights raten.
+	dh.call(m_GG);
+	GG.finalise();
+	//do fancy stuff
+	return 0;
+}; 
+

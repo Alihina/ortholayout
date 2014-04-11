@@ -125,10 +125,10 @@ public:
 	//returns a random NON-DUMMY node from GridGraph.
 	node chooseNonDummy(){return m_nonDummy.chooseElement();};
 	
-	bool isVisible(node v); //returns true if node is part of currently considered Layout
-	bool isVisible(edge v); //returns true if edge is part of currently considered Layout
-	bool isTemporary(node v); //returns true if node is currently being tested
-	bool isTemporary(edge e); //returns true if edge is currently being tested
+	bool isVisible(node v) {if (m_vState[v]>=0)return true; else return false; }; //returns true if node is part of currently considered Layout
+	bool isVisible(edge e) {if (m_eState[e]>=0)return true; else return false; }; //returns true if edge is part of currently considered Layout
+	bool isTemporary(node v) {if (m_vState[v]==1)return true; else return false; }; //returns true if node is currently being tested
+	bool isTemporary(edge e) {if (m_eState[e]==1)return true; else return false; }; //returns true if edge is currently being tested
 
 	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
