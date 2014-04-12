@@ -775,9 +775,9 @@ bool Lattice::isInside(IPoint p){
 }
 
 bool Lattice::isInside(DPoint p){
-	std::cout << p;
-	if (isOutside(p)) std::cout << " is outside" << std::endl;
-	else std::cout << " is inside" << std::endl;
+	//std::cout << p;
+	//if (isOutside(p)) std::cout << " is outside" << std::endl;
+	//else std::cout << " is inside" << std::endl;
 	return (!isOutside(p));
 }
 IPolyline Lattice::CalcOutline(){

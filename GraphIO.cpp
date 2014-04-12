@@ -194,7 +194,7 @@ if (GridMode){
 
 void GraphIO:: addToSelection(node v){
 	if (selNodes.search(v) == -1){
-		std::cout << "addint to selection " << v << std::endl;
+		//std::cout << "addint to selection " << v << std::endl;
 		selNodes.pushFront(v);
 		//const Graph &G = currentGA.constGraph();
 		node w;
@@ -1046,6 +1046,9 @@ void GraphIO::OnKeydown(){
 				currentGG.clusterize();
 			}
 			break;
+			case SDLK_v:
+				currentGG.contract();
+				break;
 		case SDLK_SPACE: //pause and unpause
 			pause = !pause;
 			break;			
@@ -1314,7 +1317,7 @@ void GraphIO::OnMousedown(){
 		if (selNode) {
 			addToSelection(selNode);
 			initNodemove();
-			//displayNodeInformation(selNode);
+			displayNodeInformation(selNode);
 		}
 		if (key_strg) brushSelect();
 		break;
@@ -1822,6 +1825,10 @@ void GraphIO::drawSelectedNode(node v) {
 	if (GridMode){
 		if (currentGG.subGG(v)) {
 			drawSelectedOutline(*currentGG.subGG(v));
+			edge e;
+			forall_adj_edges(e,v){
+				//draw connectionpoint
+			}
 			return;
 		}
 		GridGraph &GG = currentGG;

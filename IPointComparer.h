@@ -10,10 +10,11 @@ namespace ogdf{
 	template<> class StdComparer<IPoint> {
 	public:
 		static bool less (const IPoint &a, const IPoint &b);
+		static bool equal  (const IPoint &a, const IPoint &b);
 		/*static IPoint geq  (const IPoint &a, const IPoint &b);
 		static IPoint greater (const IPoint &a, const IPoint &b);
-		static IPoint eq (const IPoint &a, const IPoint &b);
-		static IPoint equal  (const IPoint &a, const IPoint &b);*/
+		static IPoint leq (const IPoint &a, const IPoint &b);*/
+		
 	};
 
 }

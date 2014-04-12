@@ -11,8 +11,11 @@ bool StdComparer<IPoint>::less(const IPoint &a, const IPoint &b)
 }
 /*bool StdComparer<IPoint>::geq  (const IPoint &a, const IPoint &b){return false}
 bool StdComparer<IPoint>::greater (const IPoint &a, const IPoint &b){return false}
-bool StdComparer<IPoint>::leq (const IPoint &a, const IPoint &b){return false}
-bool StdComparer<IPoint>::equal  (const IPoint &a, const IPoint &b){return false}*/
+bool StdComparer<IPoint>::leq (const IPoint &a, const IPoint &b){return false}*/
+bool StdComparer<IPoint>::equal(const IPoint &a, const IPoint &b){
+	if(a.m_x == b.m_x && a.m_y == b.m_y) return true;
+	return false;
+}
 
 
 static void sortPolyline( IPolyline& line )

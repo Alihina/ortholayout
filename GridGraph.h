@@ -67,7 +67,7 @@ protected:
 	unsigned int m_id; // id of the object instance, used for comparing objects.
 	
 
-	Grid m_Grid; //!< the Grid object associated with the GridGraph
+	Grid * m_Grid; //!< the Grid object associated with the GridGraph
 	EdgeArray<IPolyline> m_edgeline; //!< startingpos, list of bend points and endpos of an edge 
 	EdgeArray<DPolyline> m_dedgeline; //!< startingpos, list of bend points and endpos of an edge 
 	EdgeArray<int> m_eSpaces; //!< list of available spaces on the edge where you can re-insert a node that is saved in m_eOrig
@@ -110,12 +110,12 @@ protected:
 
 	void findCluster(node v, int p); 
 	List<node> findClusterRecurse(List<node> cluster, int p);
+	edge contract(node v); //joins two edges on node v assuming indeg(v) = outdeg(v) = 1
+
 public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
-
 	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
-
-
+	void contract(); //turns all paths into single edges.
 	//List<node> GridGraph::trimCluster(List<node> U, node v);
 	//List<node> &nonDummyNodes(){return m_nonDummy;}
 

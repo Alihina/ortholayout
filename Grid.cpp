@@ -639,7 +639,7 @@ void Grid::restorePoint(IPoint A) {
 	}
 } 
 
-void Grid::restoreLine(IPolyline E, bool ends = false) {
+void Grid::restoreLine(IPolyline E, bool ends) {
 	ListIterator<IPoint> it = E.begin();
 	if (ends) {restorePoint(*it);}
 	IPoint last = *it;

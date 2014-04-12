@@ -1071,6 +1071,123 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 	delNode(w);
 
 }; 			
+
+void GridGraph::contract(){ // This will break if GridGraph is a cycle, but that should never happen unless the original graph is a cycle.
+	m_IOprep = false;
+	//first take all paths and reverse edges such that every deg2 vertex has exactly one incoming and one outgoing edge;
+	List<node> deg2nodes;
+	List<ListIterator<node>> del;
+	allNodes(deg2nodes);
+	forall_nonconst_listiterators(node,it,deg2nodes){
+		if ((*it)->degree() != 2) del.pushFront(it);
+		else if (subGG(*it)) del.pushFront(it); //don't contact clusters!
+	}		
+	forall_listiterators(ListIterator<node>,itit,del){
+		deg2nodes.del(*itit);
+	}
+	
+	List<node> deg2nodesCopy = deg2nodes;
+	while(!deg2nodes.empty()){
+		node v = deg2nodes.chooseElement(); //take a random deg2 node
+		adjEntry v_adj = v->firstAdj(); 
+		adjEntry w_adj = v_adj->twin();
+		node w = w_adj->theNode(); 	
+		while (w->degree() == 2 && subGG(v) == NULL){
+			v = w;
+			v_adj = w_adj->cyclicSucc();
+			w_adj = v_adj->twin();
+			w = w_adj->theNode();
+		}		
+		//w is now the first node in the path
+		edge e = v_adj->theEdge();
+		if (e->target() != v) reverseEdge(e); //direct the path from w to v
+		
+		while(v->degree() == 2 && subGG(v) == NULL){ //move to next neighbor und fix path until end
+			deg2nodes.del(deg2nodes.get(deg2nodes.search(v)));
+			w = v;
+			w_adj = v_adj->cyclicSucc();
+			v_adj = w_adj->twin();
+			v = v_adj->theNode();
+			e = v_adj->theEdge();
+			if (e->target() != v) reverseEdge(e);
+		}
+	}
+	//all deg2Nodes have been fixed.
+	forall_listiterators(node,it,deg2nodesCopy){
+		contract(*it);
+	}
+}
+
+edge GridGraph::contract(node v){
+	//unsplit removes outgoing edge and reroutes incoming edge;
+	
+	List<edge> outgoingL;
+	outEdges(v,outgoingL);
+	edge out = outgoingL.front();
+
+	List<edge> incomingL;
+	inEdges(v,incomingL);
+	edge in = incomingL.front();	
+	
+	List<edge> out_eOrig = m_eOrig[out];
+	IPolyline out_edgeline = m_edgeline[out];
+	int out_eSpaces = m_eSpaces[out];
+
+	IPoint pos = getPos(v);
+	//not copying m_eState, assuming standard state for all edges during contract.
+	m_nonDummy.del(m_nonDummy.get(m_nonDummy.search(v)));
+	unsplit(v);
+	edge e = in;	
+	m_eSpaces[e] += out_eSpaces;
+	m_eOrig[e].conc(out_eOrig);
+
+	if (out_edgeline.empty()) return e;
+	if (m_edgeline[e].empty()){
+		m_edgeline[e] = out_edgeline;
+		return e;
+	}
+	if (pos == m_edgeline[e].back() && pos == out_edgeline.front()){		
+		out_edgeline.popFront();
+		m_edgeline[e].popBack();
+		IPoint p1, p2;
+		p1 = out_edgeline.front();
+		p2 = m_edgeline[e].back();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushBack(pos);
+		m_edgeline[e].conc(out_edgeline);		
+	}else if (pos == out_edgeline.back() && pos == m_edgeline[e].front()){				
+		out_edgeline.popBack();
+		m_edgeline[e].popFront();
+		IPoint p1, p2;
+		p1 = out_edgeline.back();
+		p2 = m_edgeline[e].front();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushFront(pos);		
+		m_edgeline[e].concFront(out_edgeline);				
+	}else if (pos == m_edgeline[e].back() && pos == out_edgeline.back()){		
+		out_edgeline.popBack();
+		m_edgeline[e].popBack();
+		IPoint p1, p2;
+		p1 = out_edgeline.back();
+		p2 = m_edgeline[e].back();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushBack(pos);		
+		while (!out_edgeline.empty()){
+			m_edgeline[e].pushBack(out_edgeline.popBackRet());
+		}		
+	}else if (pos == m_edgeline[e].front() && pos == out_edgeline.front()){		
+		out_edgeline.popFront();
+		m_edgeline[e].popFront();
+		IPoint p1, p2;
+		p1 = out_edgeline.front();
+		p2 = m_edgeline[e].front();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushFront(pos);
+
+		while (!out_edgeline.empty()){
+			m_edgeline[e].pushFront(out_edgeline.popFrontRet());
+		}				
+	}
+	return e;	
+
+}
+
 void GridGraph::init(){};
 
 //bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror)
