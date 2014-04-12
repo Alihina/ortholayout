@@ -6,7 +6,7 @@
 #include <OGDF/basic/Thread.h>
 #include <OGDF/basic/Array2D.h>
 #include <ogdf/basic/Queue.h>
-//#include "IPointComparer"  //einkommentieren, ich hab die datei grad nicht da.
+#include "IPointComparer.h"  //einkommentieren, ich hab die datei grad nicht da.
 
 using namespace ogdf;
 

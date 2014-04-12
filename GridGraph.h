@@ -9,7 +9,7 @@
 #include <OGDF/basic/Array2D.h>
 #include <OGDF/basic/Array.h>
 #include <Lattice.h>
-#include <OLDGrid.h>
+#include <Grid.h>
 #include "IPointComparer.h"//zur OutlineBerechnung
 
 
@@ -112,13 +112,13 @@ protected:
 	List<node> findClusterRecurse(List<node> cluster, int p);
 public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
-<<<<<<< HEAD
-	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
-=======
 
-	List<node> GridGraph::trimCluster(List<node> U, node v);
-	List<node> &nonDummyNodes(){return m_nonDummy;}
->>>>>>> origin/Grideinarbeiten
+	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
+
+
+	//List<node> GridGraph::trimCluster(List<node> U, node v);
+	//List<node> &nonDummyNodes(){return m_nonDummy;}
+
 private:
 	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs	
 	List<node> GridGraph::trimCluster(List<node> U, node v);

@@ -376,51 +376,52 @@ void GridGraph::acceptPos() {
 }
 
 void GridGraph::rejectPos() {
-	//and delete temprary
-	ListIterator<node> itt;
-	//delete invisible
-	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();it=itt) {
-		itt = it.succ();
-		if (m_vState[(*it)]==1) { 
-			m_Grid.restoreFill(outline von (*it));
-			delNode(*it);
-		}
+	////and delete temprary
+	//ListIterator<node> itt;
+	////delete invisible
+	//for (ListIterator<node> it = nonDummyNodes().begin();it.valid();it=itt) {
+	//	itt = it.succ();
+	//	if (m_vState[(*it)]==1) { 
+	//		m_Grid.restoreFill(outline von (*it));
+	//		delNode(*it);
+	//	}
 
-	}
-	edge f;
-	for ((e)=firstEdge();(e);(e)=(f)) {
-		(f)= (e)->succ();
-		if (m_eState[e]==1) {
-			m_Grid.restoreline(outline von (e));
-			delEdge(e); 
-		}
-	}
+	//}
+	//edge f;
+	//for ((e)=firstEdge();(e);(e)=(f)) {
+	//	(f)= (e)->succ();
+	//	if (m_eState[e]==1) {
+	//		m_Grid.restoreline(outline von (e));
+	//		delEdge(e); 
+	//	}
+	//}
 
-	//keep invisible
-	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();++it) {
-		if (m_vState[(*it)]==-1) { 
-			m_Grid.registerfill(outline von (*it));
-			m_vState[(*it)]=0; 
-		}
-	}
-	edge e;
-	for ((e)=firstEdge();(e);(e)=(e)->succ()) {
-		if (m_eState[e]==-1) {
-			m_Grid.registerline(outline von ((e)));
-			m_eState[e]=0; 
-		}
-	}
+	////keep invisible
+	//for (ListIterator<node> it = nonDummyNodes().begin();it.valid();++it) {
+	//	if (m_vState[(*it)]==-1) { 
+	//		m_Grid.registerfill(outline von (*it));
+	//		m_vState[(*it)]=0; 
+	//	}
+	//}
+	//edge e;
+	//for ((e)=firstEdge();(e);(e)=(e)->succ()) {
+	//	if (m_eState[e]==-1) {
+	//		m_Grid.registerline(outline von ((e)));
+	//		m_eState[e]=0; 
+	//	}
+	//}
 	
 }
 
-bool tryMove(node v, IPoint pos, int rotation, int mirror) {
+bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror) {
 	//find out the position to go to and see if it's free:
 	//determine outline movingto
-
+	std::cout << "implement me!" << std::endl;
+	return false;
 	//m_Grid.release the outline of v and its edges
-	if (!m_Grid.isFree(movingto)) {
-		return false;
-	}
+	//if (!m_Grid.isFree(movingto)) {
+		//return false;
+	//}
 	//m_Grid.register movingto
 	//make the new vertex in out GridGraph
 		//and fill all the nodeArrays and lists
@@ -1288,22 +1289,22 @@ bool GridGraph::isInside(IPoint p){
 bool GridGraph::isInside(DPoint p){
 	return m_lattice.isInside(p);
 }
-bool GridGraph::isVisible(node v)//returns true if node is part of currently considered Layout
-{
-return true; //Fix Me
-}
-bool GridGraph::isVisible(edge v) //returns true if edge is part of currently considered Layout
-{
-return true; //Fix Me
-}
-bool GridGraph::isTemporary(node v) //returns true if node is currently being tested
-{
-return false; //Fix Me
-}
-bool GridGraph::isTemporary(edge e) //returns true if edge is currently being tested
-{
-return false; //Fix Me
-}
+//bool GridGraph::isVisible(node v)//returns true if node is part of currently considered Layout
+//{
+//return true; //Fix Me
+//}
+//bool GridGraph::isVisible(edge v) //returns true if edge is part of currently considered Layout
+//{
+//return true; //Fix Me
+//}
+//bool GridGraph::isTemporary(node v) //returns true if node is currently being tested
+//{
+//return false; //Fix Me
+//}
+//bool GridGraph::isTemporary(edge e) //returns true if edge is currently being tested
+//{
+//return false; //Fix Me
+//}
 
 
 
@@ -1689,38 +1690,38 @@ int GridGraph::outlineArea(IPolyline Outline)
 
 
 
-SA_Grid::SA_Grid(){
-	//set default settings
-}; 
-void SA_Grid::call(GridGraph &GG){
-	m_GG = &GG;
-	doWork();
-};
-void SA_Grid::doWork(){
-	node v;
-	ListIterator<SA_Grid> it;
-	List<SA_Grid> threads;
-	forall_nodes(v,*m_GG){
-		SA_Grid newthread;
-		threads.pushFront(newthread);
-		//maybe change some settings based on stuff like size of m_GG->Gridgraph(v) or something
-		newthread.call(m_GG->GridGraph_of(v));
-	}
-	//wait for all threads to finish, preferably using ogdf::Thread features
-	
-	//maybe output the recursiondepth and the calculation time;
-	startAnnealing();
-
-	
-}; 
-unsigned long SA_Grid::startAnnealing(){
-	GG.init()
-	GridDH dh();
-	Grid_EnergyFunction * blubb = new Art von energyfunction(); //und andere
-	dh.addEnergyFunction(blubb, weight.); //TODO gute weights raten.
-	dh.call(m_GG);
-	GG.finalise();
-	//do fancy stuff
-	return 0;
-}; 
-
+//SA_Grid::SA_Grid(){
+//	//set default settings
+//}; 
+//void SA_Grid::call(GridGraph &GG){
+//	m_GG = &GG;
+//	doWork();
+//};
+//void SA_Grid::doWork(){
+//	node v;
+//	ListIterator<SA_Grid> it;
+//	List<SA_Grid> threads;
+//	forall_nodes(v,*m_GG){
+//		SA_Grid newthread;
+//		threads.pushFront(newthread);
+//		//maybe change some settings based on stuff like size of m_GG->Gridgraph(v) or something
+//		newthread.call(m_GG->GridGraph_of(v));
+//	}
+//	//wait for all threads to finish, preferably using ogdf::Thread features
+//	
+//	//maybe output the recursiondepth and the calculation time;
+//	startAnnealing();
+//
+//	
+//}; 
+//unsigned long SA_Grid::startAnnealing(){
+//	GG.init()
+//	GridDH dh();
+//	Grid_EnergyFunction * blubb = new Art von energyfunction(); //und andere
+//	dh.addEnergyFunction(blubb, weight.); //TODO gute weights raten.
+//	dh.call(m_GG);
+//	GG.finalise();
+//	//do fancy stuff
+//	return 0;
+//}; 
+//
