@@ -4,11 +4,65 @@
 
 
 Lattice::Lattice(){
+	//std::cout << "CREATED LATTICE!" << std::endl;
 	nodePos.init(*this,IPoint(-1,-1));
 	height.init(*this,-1);
 	start.init(*this,-1);
 	end.init(*this,-1);
 }
+
+Lattice::Lattice(const Lattice &L){
+	//std::cout << "COPIED LATTICE WITH " << L.numberOfNodes() << " NODES!" << std::endl;
+	nodePos.init(*this,IPoint(-1,-1));
+	height.init(*this,-1);
+	start.init(*this,-1);
+	end.init(*this,-1);
+	
+	node v;
+	NodeArray<node> srcCopy(*this,NULL);
+	NodeArray<node> trgCopy(L,NULL);
+	forall_nodes(v,L){
+		node w = newNode();
+		srcCopy[w] = v;
+		trgCopy[v] = w;
+		nodePos[w] = L.nodePos[v];
+	}
+	edge e;
+	forall_edges(e,L){
+		edge f = newEdge(trgCopy[e->source()], trgCopy[e->target()]);
+		height[f] = L.height[e];
+		start[f] = L.start[e];
+		end[f] = L.end[e];
+	}
+
+}
+
+Lattice& Lattice::operator=(const Lattice &L){
+	//std::cout << "ASSIGNED LATTICE WITH " << L.numberOfNodes() << " NODES!" << std::endl;
+	nodePos.init(*this,IPoint(-1,-1));
+	height.init(*this,-1);
+	start.init(*this,-1);
+	end.init(*this,-1);
+	
+	node v;
+	NodeArray<node> srcCopy(*this,NULL);
+	NodeArray<node> trgCopy(L,NULL);
+	forall_nodes(v,L){
+		node w = newNode();
+		srcCopy[w] = v;
+		trgCopy[v] = w;
+		nodePos[w] = L.nodePos[v];
+	}
+	edge e;
+	forall_edges(e,L){
+		edge f = newEdge(trgCopy[e->source()], trgCopy[e->target()]);
+		height[f] = L.height[e];
+		start[f] = L.start[e];
+		end[f] = L.end[e];
+	}
+	return *this;
+}
+
 
 int Lattice::getHeight(IPoint p1, IPoint p2){
 	if (p1.m_x == p2.m_x) return p1.m_x;
@@ -143,6 +197,7 @@ edge Lattice::connect(node v1, node v2){
 }
 
 node Lattice::getNode(IPoint pos){ 
+	//std::cout << "getting Node" << std::endl;
 	node v;
 	forall_nodes(v,*this){
 		if (nodePos[v] == pos){			
@@ -151,8 +206,11 @@ node Lattice::getNode(IPoint pos){
 		}
 	}
 	node w = newNode();
+	//std::cout << "created Node "<< w << std::endl;
 	//std::cout << "created node# " << w << ": " << pos<< std::endl;
+	//std::cout << "setting Pos to "<< pos << std::endl;
 	nodePos[w] = pos;
+	//std::cout << "set Pos to "<< pos << std::endl;
 	return w;
 }
 
@@ -170,6 +228,23 @@ bool Lattice::isOutside(IPoint pos){
 		if (nodePos[e->source()].m_x > nodePos[e->target()].m_x) return true;
 	}
 	return false;
+}
+bool Lattice::isOutside(DPoint pos){
+	edge e = NULL;
+	bool higher = false;
+	bool lower = false;
+	forall_listiterators(edge, it, hor){		
+		if (height[*it] > pos.m_y){
+			if (start[*it] <= pos.m_x && end[*it] >= pos.m_x) lower = true;		
+		}else{
+			if (start[*it] <= pos.m_x && end[*it] >= pos.m_x) higher = true;		
+		}
+	}
+	//if (e){
+	//	if (nodePos[e->source()].m_x > nodePos[e->target()].m_x) return true;
+	//}
+	if (higher && lower) return false;
+	return true;
 }
 List<edge> Lattice::edges(IPoint p1, IPoint p2){
 	int pos = getHeight(p1,p2);
@@ -477,14 +552,20 @@ void Lattice::merge(node v1, node v2){
 
 void Lattice::addLine(IPolyline line) {
 	if (line.empty()) return;
+	//std::cout << "adding line : ";
+	//forall_listiterators(IPoint, it, line) std::cout << *it << "->";
+	//std::cout << std::endl;
 	IPoint p1;
 	IPoint p2 = line.popFrontRet();
 	ListIterator<IPoint> it;	
 		forall_listiterators(IPoint, it, line){
 		p1 = p2;
 		p2 = *it;
+		//std::cout << "p1 " << p1 << " p2 " << p2 << std::endl;
 		int height = getHeight(p1,p2);
+		//std::cout << "height " << height << std::endl;
 		node vSrc = getNode(p1);
+		//std::cout << "vSrc :" << vSrc << std::endl;
 		node vTrg = getNode(p2);		
 		List<edge> crossings = edges(p1, p2);
 		bool debug = false;
@@ -689,6 +770,16 @@ IPolyline Lattice::outline(){
 	return m_pOutline;
 }
 
+bool Lattice::isInside(IPoint p){
+	return (!isOutside(p));
+}
+
+bool Lattice::isInside(DPoint p){
+	std::cout << p;
+	if (isOutside(p)) std::cout << " is outside" << std::endl;
+	else std::cout << " is inside" << std::endl;
+	return (!isOutside(p));
+}
 IPolyline Lattice::CalcOutline(){
 	if (this->empty()) return IPolyline();
 	IPolyline ret;

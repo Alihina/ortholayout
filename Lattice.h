@@ -27,6 +27,7 @@ private:
 	IPolyline m_pOutline;
 	node getNode(IPoint pos); //get point at pos, create it otherwise
 	bool isOutside(IPoint pos); 
+	bool isOutside(DPoint pos); 
 	List<edge> edges(IPoint p1, IPoint p2); //return list of edges between p1 and p2 (open intervall)
 	node splitEdge(edge e, int pos);
 	int getHeight(IPoint p1, IPoint p2);
@@ -48,8 +49,12 @@ private:
 
 public:	
 	Lattice();
+	Lattice(const Lattice &L);
+	Lattice& operator=(const Lattice &L);
 	void addLine(IPolyline line); //adds Polyline to Lattice and updates BBox and outline
 	void removeLine(IPolyline line);
+	bool isInside(IPoint p);
+	bool isInside(DPoint p);
 	IPolyline outline();
 	IPolyline CalcOutline();
 

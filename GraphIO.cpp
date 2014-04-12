@@ -136,25 +136,32 @@ double GraphIO::v2g(double a) { // Convert Onscreen coordinates to global coordi
 node GraphIO::getNode(int x, int y){	
 if (GridMode){
 	//const Graph &G = currentGG.constGraph();
-
 	node v;
 
 	forall_nodes(v,currentGG){
-		node hitTest;// = hitNode( v,x,y ); // *operator converts the iterator returned by get() to reference to its node element
-	
-	
-		float Vw = nodesize; //Get Width, height and top-left point for node rect in global coordinates
-		float Vh = nodesize;
-		float Vx = currentGG.x(v) - (Vw/2);
-		float Vy = currentGG.y(v) - (Vh/2);
-		DPoint M = v2g(DPoint(x,y));
-		if ((Vx < M.m_x) && (M.m_x < Vx+Vw) && (Vy < M.m_y) && (M.m_y < Vy+Vh)){
-			hitTest = v;
+		node hitTest;// = hitNode( v,x,y ); // *operator converts the iterator returned by get() to reference to its node element	
+		if (currentGG.subGG(v)){
+			GridGraph &GG = *currentGG.subGG(v);
+			DPoint M = v2g(DPoint(x,y));
+			M.m_x -= GG.getPos().m_x;
+			M.m_y -= GG.getPos().m_y;
+
+			if (GG.isInside(M)) return v;
+
 		}else{
-			hitTest = NULL;
-		}
-		if (hitTest != NULL) {
-			return hitTest;
+			float Vw = nodesize; //Get Width, height and top-left point for node rect in global coordinates
+			float Vh = nodesize;
+			float Vx = currentGG.x(v) - (Vw/2);
+			float Vy = currentGG.y(v) - (Vh/2);
+			DPoint M = v2g(DPoint(x,y));
+			if ((Vx < M.m_x) && (M.m_x < Vx+Vw) && (Vy < M.m_y) && (M.m_y < Vy+Vh)){
+				hitTest = v;
+			}else{
+				hitTest = NULL;
+			}
+			if (hitTest != NULL) {
+				return hitTest;
+			}
 		}
 	}
 	return NULL;	
@@ -166,7 +173,7 @@ if (GridMode){
 	forall_nodes(v,G){
 		node hitTest;// = hitNode( v,x,y ); // *operator converts the iterator returned by get() to reference to its node element
 		GraphAttributes &GA = currentGA;
-	
+
 		float Vw = GA.width(v); //Get Width, height and top-left point for node rect in global coordinates
 		float Vh = GA.height(v);
 		float Vx = GA.x(v) - (Vw/2);
@@ -187,6 +194,7 @@ if (GridMode){
 
 void GraphIO:: addToSelection(node v){
 	if (selNodes.search(v) == -1){
+		std::cout << "addint to selection " << v << std::endl;
 		selNodes.pushFront(v);
 		//const Graph &G = currentGA.constGraph();
 		node w;
@@ -440,7 +448,7 @@ void GraphIO::setGA(GraphAttributes &newGA) {
 void GraphIO::prepareGG(GridGraph &GG){
 	node v;
 	GG.IOprep() = true;	
-	std::cout << "preparing GG# " << GG.id() << std::endl;
+	//std::cout << "preparing GG# " << GG.id() << std::endl;
 	forall_nodes(v,GG){
 		GG.dx(v) = GG.x(v);
 		GG.dy(v) = GG.y(v);
@@ -451,15 +459,16 @@ void GraphIO::prepareGG(GridGraph &GG){
 		else GG.yScale(v) = 1;				
 		DPoint pos(GG.getPos().m_x, GG.getPos().m_y); 
 		GG.dPos() = pos;
-		if (GG.subGG(v)){
+		if (GG.subGG(v)){			
 			//DPoint nPos;
 			//nPos.m_x = pos.m_x + GG.dx(v);
 			//nPos.m_y = pos.m_y + GG.dy(v);
 			prepareGG(*GG.subGG(v));
 		}
 	}
-	edge e;
+	edge e;	
 	forall_edges(e,GG){		
+		GG.dedgeline(e).clear();
 		forall_listiterators(IPoint,it,GG.edgeline(e)){
 			GG.dedgeline(e).pushBack(DPoint((*it).m_x,(*it).m_y));
 		}
@@ -990,6 +999,7 @@ void GraphIO::OnKeydown(){
 	node v;
 	const Graph &G = currentGA.constGraph();
 	int j ;
+	int realnodes = 0;
 	switch(event.key.keysym.sym){
 		case SDLK_1: //scale to fit
 			//zoomTo(Gscale);
@@ -1032,6 +1042,8 @@ void GraphIO::OnKeydown(){
 						currentGG.moveToCluster(*it, selNode);
 					}
 				}
+			}else{
+				currentGG.clusterize();
 			}
 			break;
 		case SDLK_SPACE: //pause and unpause
@@ -1092,10 +1104,26 @@ void GraphIO::OnKeydown(){
 		case SDLK_LCTRL:
 			key_strg = true;
 			break;
-		case SDLK_i:
+		case SDLK_e:
 			forall_listiterators(node,it,selNodes){
-				displayNodeInformation(*it);
+				//std::cout << "eviscerating selNode" << std::endl;
+				currentGG.eviscerate(*it);
 			}
+			clearSelection();
+			break;
+		case SDLK_d:
+			currentGG.displayDebug();
+			break;
+		case SDLK_i:
+			node v;			
+			forall_nodes(v,currentGG){
+				if ((v->degree() != 2)|(currentGG.subGG(v) != NULL)){
+					realnodes++;					
+					addToSelection(v);
+					selEdges.clear();					
+				}
+			}
+			std::cout << realnodes << std::endl;
 			break;
 		case SDLK_n:
 			std::cout << " asdf  " << std::endl;
@@ -1164,7 +1192,7 @@ if (GridMode){
 		std::cout << " [" << currentGG.edgeline(e).front().m_x << ":" << currentGG.edgeline(e).front().m_y << "]" << std::endl; */
 
 	}
-	if (currentGG.GridGraph_of(v)) currentGG.GridGraph_of(v)->displayDebug();
+	if (currentGG.subGG(v)) currentGG.subGG(v)->displayDebug();
 	//std::cout << "adjacent edgelines with forall_adj_edges: " << std::endl;
 	//edge e;
 	//forall_adj_edges(e,v){
@@ -1286,7 +1314,7 @@ void GraphIO::OnMousedown(){
 		if (selNode) {
 			addToSelection(selNode);
 			initNodemove();
-			displayNodeInformation(selNode);
+			//displayNodeInformation(selNode);
 		}
 		if (key_strg) brushSelect();
 		break;
@@ -1554,8 +1582,8 @@ bool GraphIO::think() {
 	}
 	drawGraph();
     //drawSelected();
-	IPolyline outline = testLattice.outline();
-	if (outline.size() > 0) drawOutline( outline,DPoint(0,0));
+	/*IPolyline outline = testLattice.outline();
+	if (outline.size() > 0) drawOutline( outline,DPoint(0,0));*/
 
 	SDL_RenderPresent(rend);
 
@@ -1578,6 +1606,9 @@ void GraphIO::drawSelected() {
 
 void::GraphIO::drawGG(GridGraph &GG){
 	//const Graph &G = precurrentGG.constGraph(); //Get the Graph underlying GA
+	//if (GG.id() != 1) std::cout << "drawing subGG " << GG.id() << std::endl;
+	IPolyline outline = GG.getOutline();
+	drawOutline(GG);
 	node v;
 	edge e;
 	if (!GG.IOprep()) prepareGG(GG);
@@ -1590,7 +1621,12 @@ void::GraphIO::drawGG(GridGraph &GG){
 	forall_edges(e,GG) drawEdge(GG,e,ealpha[e]);
 	forall_listiterators(node,it,GG.nonDummyNodes()){
 		v = *it;
-		if (GG.subGG(v)) drawGG(*GG.subGG(v));// std::cout << "Do something here" << std::endl; // call drawOutline(IPolyline outline, DPoint pos);
+		if (GG.subGG(v)){	
+			//std::cout << "GG#" << GG.id() << " has";
+			//std::cout << " in " << v;
+			//std::cout << " subGG#" << GG.subGG(v)->id() << std::endl;
+			drawGG(*GG.subGG(v));// std::cout << "Do something here" << std::endl; // call drawOutline(IPolyline outline, DPoint pos);
+		}
 		else drawNode(GG,v,valpha[v]);
 	}
 	
@@ -1657,6 +1693,11 @@ void GraphIO::drawNode(GridGraph &GG, node v, int alpha) {
 	r = (GG.id()*177)%255;
 	g = (GG.id()*47)%255;
 	b = (GG.id()*200)%255;
+	if (GG.id() == 1){
+		r = 170;
+		g = 170;
+		b = 170;
+	}
 	SDL_SetRenderDrawColor(rend, r,g,b,alpha);
 
 	SDL_RenderFillRect(rend, &nodeRect);
@@ -1667,54 +1708,181 @@ void GraphIO::drawNode(GridGraph &GG, node v, int alpha) {
 
 	SDL_SetRenderDrawColor(rend, oldr, oldg, oldb, olda); //Reset render color to previous value 	
 }
+void GraphIO::drawSelectedOutline(GridGraph &GG){
+	IPolyline outline = GG.getOutline();
+	DPoint pos = DPoint(GG.getPos().m_x, GG.getPos().m_y);
+	//std::cout << "drawing outline with pos " << pos << std::endl;	
+	if (outline.empty()) return;
+		Uint8 oldr, oldg, oldb, olda;
+    SDL_GetRenderDrawColor(rend, &oldr, &oldg, &oldb, &olda); //Get current color
+	//SDL_SetRenderDrawColor(rend,40,255,40,255);
+	//SDL_SetRenderDrawColor(rend,255,0,0,255);
+	
+	Uint8 r,g,b;
+	r = (GG.id()*177)%255;
+	g = (GG.id()*47)%255;
+	b = (GG.id()*200)%255;
+	if (GG.id() == 1){
+		r = 170;
+		g = 170;
+		b = 170;
+	}
+	r = r+ (255-r)/2;
+	if (r>255) r=255;
+	g = g+ (255-g)/2;
+	if (g>255) g=255;
+	b = b+ (255-b)/2;
+	if (b>255) b=255;
+	SDL_SetRenderDrawColor(rend, r,g,b,255);
 
+
+	/*std::cout << testLattice.numberOfEdges() << std::endl;*/
+	//std::cout << outline.size() << std::endl;
+	IPoint preQ = outline.front();
+	preQ.m_x += pos.m_x;
+	preQ.m_y += pos.m_y;
+	DPoint q2 = g2v(preQ) ;
+	DPoint q1;
+	//std::cout << "drawing outline: " << outline.size() << std::endl;
+	//Uint8 inc = 255/outline.size();
+	//int count = 0;
+	for(ListIterator<IPoint> it = outline.begin().succ(); it.valid() ; it = it.succ()){ //go through bendpoints
+		//count ++;
+		//Uint8 ldr, ldg, ldb, lda;
+		//SDL_GetRenderDrawColor(rend, &ldr, &ldg, &ldb, &lda); //Get current color
+		//SDL_SetRenderDrawColor(rend, ldr-inc, ldg, ldb+inc, lda); //Reset render color to previous value 	
+		q1 = q2;
+		IPoint preQ = *it;
+		preQ.m_x += pos.m_x;
+		preQ.m_y += pos.m_y;
+		q2 = g2v(preQ);
+		DPoint p1 = q1;
+		DPoint p2 = q2;
+		//std::cout << currentGG.dedgeline(e).front().m_x;
+		double size = g2v(0.1);
+		double off = g2v(0.3);
+		if (p1.m_y == p2.m_y){
+			if (p2.m_x > p1.m_x){ //
+				p1.m_y += off;
+				p2.m_y += off;
+				//p1.m_x -= off;
+				//p2.m_x += off;
+			}else{
+				p1.m_y -= off;
+				p2.m_y -= off;
+				//p1.m_x += off;
+				//p2.m_x -= off;
+			}
+		}else{
+			
+			if (p2.m_y > p1.m_y){
+				p1.m_x -= off;
+				p2.m_x -= off;
+				//p1.m_y -= off;
+				//p2.m_y += off;
+			}else{
+				p1.m_x += off;
+				p2.m_x += off;
+				//p1.m_y += off;
+				//p2.m_y -= off;
+			}
+		}
+
+		if (p1.m_x < p2.m_x) {
+			p1.m_x -= size;
+			p2.m_x += size;
+		}
+		else{
+			p2.m_x -= size;
+			p1.m_x += size;
+		}
+		if (p1.m_y < p2.m_y) {
+			p1.m_y -= size;
+			p2.m_y += size;
+		}
+		else{
+			p2.m_y -= size;
+			p1.m_y += size;
+		}
+
+
+
+		SDL_Rect edgeRect = {p1.m_x, p1.m_y, p2.m_x-p1.m_x, p2.m_y-p1.m_y};
+		/*SDL_Rect edgeRect = {20,20,200,200};*/
+		SDL_RenderFillRect(rend, &edgeRect);
+	}
+	//std::cout << count << std::endl;
+	SDL_SetRenderDrawColor(rend, oldr, oldg, oldb, olda); //Reset render color to previous value 	
+
+}
 
 void GraphIO::drawSelectedNode(node v) {
 	Uint8 oldr, oldg, oldb, olda;
-    SDL_GetRenderDrawColor(rend, &oldr, &oldg, &oldb, &olda); //Get current color
-if (GridMode){
+	SDL_GetRenderDrawColor(rend, &oldr, &oldg, &oldb, &olda); //Get current color
+	if (GridMode){
+		if (currentGG.subGG(v)) {
+			drawSelectedOutline(*currentGG.subGG(v));
+			return;
+		}
 		GridGraph &GG = currentGG;
-	double a = 1.7;
-	float w = nodesize*a;
-	float h = nodesize*a;
-	float x = GG.getPos().m_x + GG.dx(v) - (w/2);
-	float y = GG.getPos().m_y + GG.dy(v) - (h/2);
-	
-	DPoint Vnode = g2v(DPoint(x,y)); //Get Viewport coordinates for topleft point
+		double a = 1.7;
+		float w = nodesize*a;
+		float h = nodesize*a;
+		float x = GG.getPos().m_x + GG.dx(v) - (w/2);
+		float y = GG.getPos().m_y + GG.dy(v) - (h/2);
 
-	SDL_Rect nodeRect = {Vnode.m_x, Vnode.m_y,(w*zoom),(h*zoom)};
-	
-	//SDL_SetRenderDrawColor(rend,40,255,40,255);
-	SDL_SetRenderDrawColor(rend,255,40,40,255);
-	SDL_RenderFillRect(rend, &nodeRect);
-	//for (int i = 0; i < 4; i++){
-	//	--nodeRect.x;
-	//	--nodeRect.y;
-	//	nodeRect.w += 2;
-	//	nodeRect.h += 2;
-	//	SDL_RenderDrawRect(rend, &nodeRect);
-	//}
+		//Uint8 r,g,b;
+		//r = (GG.id()*177)%255;
+		//g = (GG.id()*47)%255;
+		//b = (GG.id()*200)%255;
+		//if (GG.id() == 1){
+		//	r = 170;
+		//	g = 170;
+		//	b = 170;
+		//}
+		//r = r+ (255-r)/2;
+		//if (r>255) r=255;
+		//g = g+ (255-g)/2;
+		//if (g>255) g=255;
+		//b = b+ (255-b)/2;
+		//if (b>255) b=255;
+		//SDL_SetRenderDrawColor(rend, r,g,b,255);
 
-}else{
+		DPoint Vnode = g2v(DPoint(x,y)); //Get Viewport coordinates for topleft point
 
-	GraphAttributes &GA = currentGA;
+		SDL_Rect nodeRect = {Vnode.m_x, Vnode.m_y,(w*zoom),(h*zoom)};
 
-	float w = GA.width(v); //Get Width, height and top-left point for node rect in global coordinates
-	float h = GA.height(v);
-	float x = GA.x(v) - (w/2);
-	float y = GA.y(v) - (h/2);
-	DPoint Vnode = g2v(DPoint(x,y)); //Get Viewport coordinates for topleft point
+		SDL_SetRenderDrawColor(rend,40,255,40,255);
+		//SDL_SetRenderDrawColor(rend,255,40,40,255);
+		SDL_RenderFillRect(rend, &nodeRect);
+		//for (int i = 0; i < 4; i++){
+		//	--nodeRect.x;
+		//	--nodeRect.y;
+		//	nodeRect.w += 2;
+		//	nodeRect.h += 2;
+		//	SDL_RenderDrawRect(rend, &nodeRect);
+		//}
 
-	SDL_Rect nodeRect = {Vnode.m_x, Vnode.m_y,(w*zoom),(h*zoom)};
-	SDL_SetRenderDrawColor(rend,40,255,40,255);
-	for (int i = 0; i < 4; i++){
-		--nodeRect.x;
-		--nodeRect.y;
-		nodeRect.w += 2;
-		nodeRect.h += 2;
-		SDL_RenderDrawRect(rend, &nodeRect);
-	}	
-}
+	}else{
+
+		GraphAttributes &GA = currentGA;
+
+		float w = GA.width(v); //Get Width, height and top-left point for node rect in global coordinates
+		float h = GA.height(v);
+		float x = GA.x(v) - (w/2);
+		float y = GA.y(v) - (h/2);
+		DPoint Vnode = g2v(DPoint(x,y)); //Get Viewport coordinates for topleft point
+
+		SDL_Rect nodeRect = {Vnode.m_x, Vnode.m_y,(w*zoom),(h*zoom)};
+		SDL_SetRenderDrawColor(rend,40,255,40,255);
+		for (int i = 0; i < 4; i++){
+			--nodeRect.x;
+			--nodeRect.y;
+			nodeRect.w += 2;
+			nodeRect.h += 2;
+			SDL_RenderDrawRect(rend, &nodeRect);
+		}	
+	}
 	SDL_SetRenderDrawColor(rend, oldr, oldg, oldb, olda); //Reset render color to previous value 	
 }
 
@@ -1763,6 +1931,11 @@ void GraphIO::drawEdge(GridGraph &GG, edge e, int alpha) {
 	r = (GG.id()*177)%255;
 	g = (GG.id()*47)%255;
 	b = (GG.id()*200)%255;
+	if (GG.id() == 1){
+		r = 170;
+		g = 170;
+		b = 170;
+	}
 	SDL_SetRenderDrawColor(rend, r,g,b,alpha);
 
 	DPoint p2 = g2v(GG.dedgeline(e).front() + GG.dPos());
@@ -1796,26 +1969,48 @@ void GraphIO::drawEdge(GridGraph &GG, edge e, int alpha) {
 	SDL_SetRenderDrawColor(rend, oldr, oldg, oldb, olda); //Reset render color to previous value 	
 }
 
-void GraphIO::drawOutline(IPolyline outline, DPoint pos){
+void GraphIO::drawOutline(GridGraph &GG){
+	IPolyline outline = GG.getOutline();
+	DPoint pos = DPoint(GG.getPos().m_x, GG.getPos().m_y);
+	//std::cout << "drawing outline with pos " << pos << std::endl;	
+	if (outline.empty()) return;
 		Uint8 oldr, oldg, oldb, olda;
     SDL_GetRenderDrawColor(rend, &oldr, &oldg, &oldb, &olda); //Get current color
 	//SDL_SetRenderDrawColor(rend,40,255,40,255);
-	SDL_SetRenderDrawColor(rend,255,0,0,255);
+	//SDL_SetRenderDrawColor(rend,255,0,0,255);
+	
+	Uint8 r,g,b;
+	r = (GG.id()*177)%255;
+	g = (GG.id()*47)%255;
+	b = (GG.id()*200)%255;
+	if (GG.id() == 1){
+		r = 170;
+		g = 170;
+		b = 170;
+	}
+	SDL_SetRenderDrawColor(rend, r,g,b,255);
+
+
 	/*std::cout << testLattice.numberOfEdges() << std::endl;*/
 	//std::cout << outline.size() << std::endl;
-	
-	DPoint q2 = g2v(outline.front()) + pos;
+	IPoint preQ = outline.front();
+	preQ.m_x += pos.m_x;
+	preQ.m_y += pos.m_y;
+	DPoint q2 = g2v(preQ) ;
 	DPoint q1;
 	//std::cout << "drawing outline: " << outline.size() << std::endl;
-	Uint8 inc = 255/outline.size();
-	int count = 0;
+	//Uint8 inc = 255/outline.size();
+	//int count = 0;
 	for(ListIterator<IPoint> it = outline.begin().succ(); it.valid() ; it = it.succ()){ //go through bendpoints
-		count ++;
-		Uint8 ldr, ldg, ldb, lda;
-		SDL_GetRenderDrawColor(rend, &ldr, &ldg, &ldb, &lda); //Get current color
-		SDL_SetRenderDrawColor(rend, ldr-inc, ldg, ldb+inc, lda); //Reset render color to previous value 	
+		//count ++;
+		//Uint8 ldr, ldg, ldb, lda;
+		//SDL_GetRenderDrawColor(rend, &ldr, &ldg, &ldb, &lda); //Get current color
+		//SDL_SetRenderDrawColor(rend, ldr-inc, ldg, ldb+inc, lda); //Reset render color to previous value 	
 		q1 = q2;
-		q2 = g2v(*it) + pos;
+		IPoint preQ = *it;
+		preQ.m_x += pos.m_x;
+		preQ.m_y += pos.m_y;
+		q2 = g2v(preQ);
 		DPoint p1 = q1;
 		DPoint p2 = q2;
 		//std::cout << currentGG.dedgeline(e).front().m_x;

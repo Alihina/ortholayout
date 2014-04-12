@@ -106,14 +106,16 @@ protected:
 	The parameter p indicates how close the cluster should be. 
 	*/	
 
-public:
+
 	void findCluster(node v, int p); 
 	List<node> findClusterRecurse(List<node> cluster, int p);
+public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
-	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
-
-	List<node> GridGraph::trimCluster(List<node> U, node v);
+	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
 private:
+	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs	
+	List<node> GridGraph::trimCluster(List<node> U, node v);
+
 
 	
 	
@@ -128,10 +130,11 @@ public:
 	//A destructor might prove neccessary in the end
 	
 	node addNode(node orig); //adds a node, returns the new node, takes care of consequential edges and connections
+	node addInnerNode(node orig, node src); //adds a node that was in a subGG, returns the new node, takes care of consequential edges and connections
 	edge addEdge(edge orig); //never used (?)
 	void displayDebug();
 	//returns a pointer to the Gridgraph represented by node v;
-	GridGraph * GridGraph_of(node v){return m_vGridGraph[v];};
+	//GridGraph * subGG(node v){return m_vGridGraph[v];};
 
 	//returns a random NON-DUMMY node from GridGraph.
 	node chooseNonDummy(){return m_nonDummy.chooseElement();};
@@ -143,12 +146,16 @@ public:
 	node getHiddenNode(){return m_HiddenNode;};
 	List<node> &nonDummyNodes(){return m_nonDummy;};
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
-
+	bool isInside(IPoint p);
+	bool isInside(DPoint p);
 	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
 
 	IPolyline getBox(); //returns bottemleft and upperright cornerpoint of GG
-	IPolyline GridGraph::getOutline(){ return m_lattice.outline();};
+	IPolyline GridGraph::getOutline(){
+		//std::cout << "calling getOutline on GridGraph #" << id() << std::endl;
+		return m_lattice.outline();}
+
 	void addToLattice(IPolyline line){m_lattice.addLine(line);};
 	void removeFromLattice(IPolyline line){m_lattice.removeLine(line);};
 	
@@ -174,7 +181,8 @@ public:
 	could be found dynamically, either by choosing p according to the number of nodes or by increasing p
 	until a suitably small number of nodes has been achieved (note: don't count nodes of degree 2, those are just edges)
 	*/
-	void clusterize(int p = 0); 
+	void clusterize(); 
+	void clusterize(int p); 
 	
 	/* 
 	GETTTERS AND SETTERS	

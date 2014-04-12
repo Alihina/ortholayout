@@ -182,13 +182,14 @@ private:
 
 	void drawSelected();
 	void drawSelectedNode(node v);
+	void drawSelectedOutline(GridGraph &GG);
 	void drawSelectedEdge(edge e);
 	void drawGraph();
 	void drawNode(GraphAttributes &GA, node v, int alpha);
 	void drawEdge(GraphAttributes &GA, edge e, int alpha);	
 	void drawNode(GridGraph &GG, node v, int alpha);
 	void drawEdge(GridGraph &GG, edge e, int alpha);
-	void drawOutline(IPolyline outline, DPoint pos);
+	void drawOutline(GridGraph &GG);
 	void drawGG(GridGraph &GG);
 
 	void clrscr();
