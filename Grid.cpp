@@ -639,14 +639,20 @@ void Grid::restorePoint(IPoint A) {
 	}
 } 
 
-void Grid::restoreLine(IPolyline E) {
+void Grid::restoreLine(IPolyline E, bool ends = false) {
 	ListIterator<IPoint> it = E.begin();
-	restorePoint(*it);
+	if (ends) {restorePoint(*it);}
 	IPoint last = *it;
 	++it;
 	OGDF_ASSERT(last != *it);
 	while (it.valid()) {
-		restorePoint(*it);
+		ListIterator<IPoint> next = it.succ();
+		if (it.succ().valid())   {
+			restorePoint(*it);
+		}
+		else if (ends) {
+			restorePoint(*it);
+		}
 		if (last.m_x == (*it).m_x) { //same x, so vertical line.
 			int i, j;
 			if (last.m_y < (*it).m_y) {

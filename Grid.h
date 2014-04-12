@@ -62,7 +62,7 @@ public:
 	void registerLine(IPolyline E);
 	void registerFill(IPolyline E);
 	void restorePoint(IPoint A); //removes nodes on point A and reinserts gridedges when appropriate
-	void restoreLine(IPolyline E); //reinserts gridedges and gridnodes along the line E
+	void restoreLine(IPolyline E, bool ends = false); //reinserts gridedges and gridnodes along the line E
 	void restoreFill(IPolyline E); //repairs Grid in the area given by the outline E
 	bool isFree(IPoint A); //Returns true if there is no node on gridpoint A
 	bool isFreeLine(IPolyline E); //CHANGED: added this
