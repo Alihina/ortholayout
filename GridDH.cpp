@@ -1,6 +1,8 @@
+#include "stdafx.h"
 
 #include <GridDH.h>
 #include <ogdf/basic/Math.h>
+#include <Grid_Energyfunction.h>
 #include <time.h>
 
 //TODO: in addition to the layout size, node sizes should be used in
@@ -58,10 +60,10 @@ namespace ogdf {
 	void GridDH::addEnergyFunction(Grid_EnergyFunction *F, double weight)
 	{
 		m_energyFunctions.pushBack(F);
-		OGDF_ASSERT(weight >= 0);  //um, really?
+		OGDF_ASSERT(weight >= 0);  //um, really? Ya rly
 		m_weightsOfEnergyFunctions.pushBack(weight);
 		F->computeEnergy();
-		m_energy += F->energy();
+		m_energy += F->energy(); //Y no weight?
 	}
 
 	List<String> GridDH::returnEnergyFunctionNames()
@@ -115,42 +117,50 @@ namespace ogdf {
 	//returned value is the node that should be moved,
 	//newPos is the place it is moved to.
 	//TODO: this function retries fiddling things until it finds a change that doesn't collide.
-	node GridDH::computeCandidateLayout(
-	const GridGraph &GG,
-	IPoint &newPos) const
+	node GridDH::computeCandidateLayout( GridGraph &GG, bool &worked) const
 	{
-		while(true) {//no way this can go wrong, maybe add a counter? or just continue in main algo?
-//int randomPos = randomNumber(0,m_nonIsolatedNodes.size()-1);
-			node v = GG.getNonDummyNode();
-				
-//*(m_nonIsolatedNodes.get(randomPos)); //getting that node and calculating a new point for it
-			double oldx = GG.x(v); //TODO: this needs to be reformatted that it works
-			double oldy = GG.y(v);
-			double randomAngle = randNum() * 2.0 * Math::pi;
-			newPos.m_y = int(oldy+sin(randomAngle)*m_diskRadius+0.5); 
-			newPos.m_x = int(oldx+cos(randomAngle)*m_diskRadius+0.5); 
-			//TODO: randomly rotate or flip the vertex if it is not trivial
+		worked = false;
+		//no way this can go wrong, maybe add a counter? or just continue in main algo?
+		//int randomPos = randomNumber(0,m_nonIsolatedNodes.size()-1);
+		node v = GG.chooseNonDummy();
+		IPoint newPos;
+		//*(m_nonIsolatedNodes.get(randomPos)); //getting that node and calculating a new point for it
+		double oldx = GG.x(v); 
+		double oldy = GG.y(v);
+		double randomAngle = randNum() * 2.0 * Math::pi;
+		double distmult = max(randNum(),0.2);  //tweakable
+		double distance = max(m_diskRadius * distmult,1.0);
+		newPos.m_y = int(oldy+sin(randomAngle)*distance+0.5); 
+		newPos.m_x = int(oldx+cos(randomAngle)*distance+0.5); 
+			
+		
 #ifdef OGDF_DEBUG
 			double dist = sqrt((newPos.m_x - oldx)*(newPos.m_x - oldx)+(newPos.m_y-oldy)*(newPos.m_y-oldy));
 			OGDF_ASSERT(dist > 0.99 * m_diskRadius && dist < 1.01 * m_diskRadius);
 #endif
-			if ("we don't collide") { //TODO THIS
-				return v;
-			}
+		int rot = (int) (randNum()*4); //adjust the shit outta this.
+		int mir = (int) (randNum()*3);
+		if (GG.tryMove(v,newPos,rot,mir)) { 
+			worked = true;
 		}
+		return v;
 	}
 
 	//chooses the initial radius of the disk as half the maximum of width and height of
 	//the initial layout or depending on the value of m_fineTune
-	void GridDH::computeFirstRadius(const GridGraph &GG)  //need to redo this
+	void GridDH::computeFirstRadius(GridGraph &GG)  //need to redo this
 	{
-		const Graph &G = GG.constGraph();
-		node v = G.firstNode();
-		double minX = GG.x(v);
-		double minY = GG.y(v);
-		double maxX = minX;
-		double maxY = minY;
-		forall_nodes(v,G) {
+		
+		//const Graph &G = GG.constGraph();
+		node v = GG.chooseNonDummy(); //firstNode();
+		int minX = GG.x(v);
+		int minY = GG.y(v);
+		int maxX = minX;
+		int maxY = minY;
+		ListIterator<node> it;
+
+		for(it = GG.nonDummyNodes().begin();it.valid();++it){
+			v = *it;
 			minX = min(minX,GG.x(v));
 			maxX = max(maxX,GG.x(v));
 			minY = min(minY,GG.y(v));
@@ -163,11 +173,11 @@ namespace ogdf {
 
 		double ratio = h/w;
 
-		double W = sqrt(G.numberOfNodes() / ratio);
+		double W = sqrt(GG.nonDummyNodes().size() / ratio);  
 
 		m_diskRadius = W / 5.0;//allow to move by a significant part of current layout size
-		m_diskRadius=max(m_diskRadius,max(maxX-minX,maxY-minY)/5.0);
-
+		m_diskRadius=max(m_diskRadius,max(maxX-minX,maxY-minY)/5.0);  //*/
+		// o-okay?
 		//TODO: also use nodeg sizes
 		/*
 		double lengthSum(0.0);
@@ -269,7 +279,7 @@ namespace ogdf {
 	//temperature, a certain number of new positions for a random vertex are tried
 	void GridDH::call(GridGraph &GG)
 	{
-		initParameters();
+		initParameters(); //m_energy = 0
 
 		m_shrinkingFactor = m_shrinkFactor; //why? that is done in initParameters!
 
@@ -277,31 +287,33 @@ namespace ogdf {
 
 		const Graph &G = GG.constGraph();
 		//compute the list of vertices with degree greater than zero
-		G.allNodes(m_nonIsolatedNodes); //this might as well be all nodes, our data set is connected
+		/*G.allNodes(m_nonIsolatedNodes); //this might as well be all nodes, our data set is connected, so we don't need this
 		ListIterator<node> it,itSucc;
 		for(it = m_nonIsolatedNodes.begin(); it.valid(); it = itSucc) {
 			itSucc = it.succ();
 			if((*it)->degree() == 0) m_nonIsolatedNodes.del(it);
-		}
-		if(G.numberOfEdges() > 0) { //else only isolated nodes
+		} /*/
+
+		if(G.numberOfEdges() > 0) { //else only isolated nodes, so this is true.
 			computeFirstRadius(GG);
 			computeInitialEnergy();
 			if(m_numberOfIterations == 0)
-				m_numberOfIterations = m_nonIsolatedNodes.size() * m_iterationMultiplier;
+				m_numberOfIterations = GG.nonDummyNodes().size() * m_iterationMultiplier;
 			//this is the main optimization loop
 			while(m_temperature > 0) {
 				//iteration loop for each temperature
 				for(int ic = 1; ic <= m_numberOfIterations; ic ++) {
-					IPoint newPos;
+					bool worked = true;
 					//choose random vertex and new position for vertex.
-					node v = computeCandidateLayout(GG,newPos);
-					//TODO here we tell the graph that the old vert and its edges are hidden and that the new ones are considered
+					node v = computeCandidateLayout(GG,worked);
+
+					
 					//compute candidate energy and decide if new layout is chosen
 					ListIterator<Grid_EnergyFunction*> it;
 					ListIterator<double> it2 = m_weightsOfEnergyFunctions.begin();
 					double newEnergy = 0.0;
 					for(it = m_energyFunctions.begin(); it.valid(); it = it.succ()) {
-						newEnergy += (*it)->computeCandidateEnergy(v,newPos) * (*it2);
+						newEnergy += (*it)->computeCandidateEnergy(v) * (*it2);
 						it2 = it2.succ();
 					}
 					OGDF_ASSERT(newEnergy >= 0.0);
@@ -331,7 +343,7 @@ namespace ogdf {
 		}
 //if there are zero degree vertices, they are placed using placeIsolatedNodes //not gonna happen
 //if(m_nonIsolatedNodes.size() != G.numberOfNodes())
-placeIsolatedNodes(GG);
+//placeIsolatedNodes(GG); //don't need, don't care
 
 	}
 } //namespace

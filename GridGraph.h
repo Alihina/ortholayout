@@ -76,6 +76,7 @@ protected:
 	List<node> m_vConnect; //!< list of dummynodes on the outline that specify the position of the connection for the outgoing edges. The order must be the same as m_eOutgoing.
 	node getConnectNode(edge e);
 	List<node> m_nonDummy; //! list of all non-dummy nodes
+	
 
 	NodeArray<GridGraph *> m_vGridGraph; //!< Pointer to the corresponding GridGraph element that the nodes represent, NULL if node is atomic
 	List<GridGraph> m_GGList; //List where the sub GridGraphs are saved.
@@ -111,7 +112,13 @@ protected:
 	List<node> findClusterRecurse(List<node> cluster, int p);
 public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
+<<<<<<< HEAD
 	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
+=======
+
+	List<node> GridGraph::trimCluster(List<node> U, node v);
+	List<node> &nonDummyNodes(){return m_nonDummy;}
+>>>>>>> origin/Grideinarbeiten
 private:
 	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs	
 	List<node> GridGraph::trimCluster(List<node> U, node v);
@@ -139,15 +146,18 @@ public:
 	//returns a random NON-DUMMY node from GridGraph.
 	node chooseNonDummy(){return m_nonDummy.chooseElement();};
 	
-	bool isVisible(node v); //returns true if node is part of currently considered Layout
-	bool isVisible(edge v); //returns true if edge is part of currently considered Layout
-	bool isTemporary(node v); //returns true if node is currently being tested
-	bool isTemporary(edge e); //returns true if edge is currently being tested
+
+	bool isVisible(node v) {if (m_vState[v]>=0)return true; else return false; }; //returns true if node is part of currently considered Layout
+	bool isVisible(edge e) {if (m_eState[e]>=0)return true; else return false; }; //returns true if edge is part of currently considered Layout
+	bool isTemporary(node v) {if (m_vState[v]==1)return true; else return false; }; //returns true if node is currently being tested
+	bool isTemporary(edge e) {if (m_eState[e]==1)return true; else return false; }; //returns true if edge is currently being tested
 	node getHiddenNode(){return m_HiddenNode;};
 	List<node> &nonDummyNodes(){return m_nonDummy;};
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
 	bool isInside(IPoint p);
 	bool isInside(DPoint p);
+
+
 	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
 
