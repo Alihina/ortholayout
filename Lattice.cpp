@@ -720,3 +720,16 @@ IPolyline Lattice::CalcOutline(){
 
 	return ret;
 }
+
+void Lattice::deconstruct()
+{
+	height.init();
+	start.init();
+	end.init();
+	hor.clear();
+	vert.clear();
+	Nodes.clear();
+	m_outline.clear();
+	m_pOutline.clear();
+	clear();//NodeArray<IPoint> nodePos ist nun ebenfalls leer
+}	

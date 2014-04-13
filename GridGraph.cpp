@@ -3,7 +3,7 @@
 
 
 #include <GridGraph.h>
-
+#include "Grid.h"
 
 unsigned int GridGraph::instanceCount = 0;
 
@@ -863,6 +863,12 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 
 }; 			
 void GridGraph::init(){};
+void GridGraph::finalise()//Löschen vom Grid, vom Lattice, Punkt finden, um den Gedreht werden soll und in Kanten Knoten wieder einfügen
+{
+	m_Grid.deconstruct();
+	m_lattice.deconstruct();
+
+}
 
 bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror){return false;};
 IPoint GridGraph::getConnection(edge e){return IPoint(0,0);};

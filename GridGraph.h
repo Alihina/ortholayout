@@ -9,7 +9,7 @@
 #include <OGDF/basic/Array2D.h>
 #include <OGDF/basic/Array.h>
 #include <Lattice.h>
-#include <OLDGrid.h>
+#include "Grid.h"
 #include "IPointComparer.h"//zur OutlineBerechnung
 
 
@@ -159,6 +159,7 @@ public:
 	Initiation should only occur when the nodes are already grouped together with optimal outline.
 	This method could also handling the simplification of paths to edges and initialization of the grid (size: sqrt(n)*4 square ?).*/
 	void init(); 
+	void finalise();
 	
 	/*tries to move the node v to the new location pos and reconnecting all edges severed in the process. 
 	If the operation succeeds, hides old nodes/edges and creates temporary new ones.

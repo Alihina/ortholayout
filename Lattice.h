@@ -52,6 +52,7 @@ public:
 	void removeLine(IPolyline line);
 	IPolyline outline();
 	IPolyline CalcOutline();
+	void deconstruct();
 
 
 };
