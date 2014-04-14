@@ -33,6 +33,7 @@ Grid::Grid() {
 }
 
 Grid::Grid(int a, int b, int c, int d) {
+	std::cout << a << " " << b << " " << c << " " << d << std::endl;
 	m_Grid = Array2D<Gridpoint> (a,b,c,d);
 	NodeArray<int> x_coord(*this);
 	NodeArray<int> y_coord(*this);
@@ -311,6 +312,7 @@ void Grid::registerPoint(IPoint A) {
 }
 
 void Grid::registerLine(IPolyline E) {
+	if (E.empty()) return;
 	ListIterator<IPoint> it = E.begin();
 	registerPoint(*it);
 	IPoint last = *it;
@@ -361,6 +363,7 @@ void Grid::registerLine(IPolyline E) {
 }
 
 void Grid::registerFill(IPolyline E) {
+	if (E.empty()) return;
 		ListIterator<IPoint> iter, next, onext, backiter;
 	//if the pattern ABA emerges, kill B and deal with all points after A. then backtrack A
 	for (iter = E.begin(); iter.valid(); ++iter) {
@@ -640,6 +643,7 @@ void Grid::restorePoint(IPoint A) {
 } 
 
 void Grid::restoreLine(IPolyline E, bool ends) {
+	if (E.empty()) return;
 	ListIterator<IPoint> it = E.begin();
 	if (ends) {restorePoint(*it);}
 	IPoint last = *it;
@@ -780,7 +784,7 @@ List<int> Grid::unionLists(ogdf::List<int> prev, ogdf::List<int> curr) {
 }
 
 void Grid::restoreFill(IPolyline E) {
-	
+	if (E.empty()) return;
 	//TODO ROBUSTNESS: check everywhere that we have an outline that is not a point
 	// wtf happnes with a star for example?
 
@@ -1037,6 +1041,7 @@ bool Grid::isFree(IPoint A) { //returns true iff both v_node and h_node are "fre
 }
 
 bool Grid::isFreeLine(IPolyline E) {
+	if (E.empty()) return true;
 	ListIterator<IPoint> it = E.begin();
 	if (!isFree(*it)) {return false;} 
 	IPoint last = *it;
@@ -1082,8 +1087,7 @@ bool Grid::isFreeLine(IPolyline E) {
 }
 
 bool Grid::isFree(IPolyline E) { //returns true if every point in the area is free. 
-
-	
+	if (E.empty()) return true;	
 	ListIterator<IPoint> iter, next, onext, backiter;
 	//if the pattern ABA emerges, kill B and deal with all points after A. then backtrack A
 	for (iter = E.begin(); iter.valid(); ++iter) {

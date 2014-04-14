@@ -1055,11 +1055,12 @@ void GraphIO::OnKeydown(){
 			if (!selNodes.empty()){
 				if (selNode) v = selNode;
 				else v = selNodes.chooseElement();				
-				forall_listiterators(node,it,selNodes){
+				/*forall_listiterators(node,it,selNodes){
 					if(*it != v){
 						activeGG->moveToCluster(*it, v);						
 					}
-				}
+				}*/
+				activeGG->moveToCluster(selNodes,v);
 				clearSelection();
 			}
 			break;

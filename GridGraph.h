@@ -114,6 +114,7 @@ protected:
 
 public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
+	void moveToCluster(List<node> nodes, node v);
 	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
 	void contract(); //turns all paths into single edges.
 	//List<node> GridGraph::trimCluster(List<node> U, node v);
@@ -170,15 +171,19 @@ public:
 	void fillLattice(); //fills lattice with all geometry
 	void destroyLattice(){delete m_lattice;}
 	 
-	//create new Grid with array [a..b]*[c..d] and initialise all the points.
+	//create new Grid with array and initialise all the points.
+	void createGrid();
+	 //create new Grid with array [a..b]*[c..d] and initialise all the points.
 	void createGrid(int a, int b, int c, int d){m_Grid = new Grid(a,b,c,d);}	
 	void fillGrid(); //fills Grid with all geometry
 	void destroyGrid(){delete m_Grid;}
 	
 	void addToLattice(IPolyline line){if (m_lattice) m_lattice->addLine(line);};
-	void removeFromLattice(IPolyline line){if (m_lattice) m_lattice->removeLine(line);};
+	void removeFromLattice(IPolyline line){if (m_lattice) m_lattice->removeLine(line);}
 	void addToGrid(IPolyline line){if (m_Grid) m_Grid->registerLine(line);}
+	void addToGrid(IPoint point){if (m_Grid) m_Grid->registerPoint(point);}
 	void removeFromGrid(IPolyline line){if (m_Grid) m_Grid->restoreLine(line);}
+	void removeFromGrid(IPoint point){if (m_Grid) m_Grid->restorePoint(point);}
 	
 
 	/*Initiate the GridGraph with a valid starting layout, preferrably with enough free space to move nodes around.

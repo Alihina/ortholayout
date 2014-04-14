@@ -46,6 +46,7 @@ protected:
 public:
 	Grid(); //create a new grid with only one gridpoint
 	//CHANGED: added this second constructor
+	
 	Grid(int a, int b, int c, int d); //create new Grid with array [a..b]*[c..d] and initialise all the points.
 	
 	/*returns the list of bendpoints for the shortest edge from A to B and 
