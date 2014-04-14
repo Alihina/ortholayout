@@ -552,9 +552,9 @@ void Lattice::merge(node v1, node v2){
 
 void Lattice::addLine(IPolyline line) {
 	if (line.empty()) return;
-	//std::cout << "adding line : ";
-	//forall_listiterators(IPoint, it, line) std::cout << *it << "->";
-	//std::cout << std::endl;
+	/*std::cout << "adding line : ";
+	forall_listiterators(IPoint, it, line) std::cout << *it << "->";
+	std::cout << std::endl;*/
 	IPoint p1;
 	IPoint p2 = line.popFrontRet();
 	ListIterator<IPoint> it;	

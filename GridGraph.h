@@ -81,8 +81,8 @@ protected:
 	NodeArray<GridGraph *> m_vGridGraph; //!< Pointer to the corresponding GridGraph element that the nodes represent, NULL if node is atomic
 	List<GridGraph> m_GGList; //List where the sub GridGraphs are saved.
 	
-	IPoint m_pos; //position of this GG's origin in coordinates of the topmost GG
-	DPoint m_dPos; //position of this GG's origin in coordinates of the topmost GG
+	//IPoint m_pos; //position of this GG's origin in coordinates of the topmost GG
+	//DPoint m_dPos; //position of this GG's origin in coordinates of the topmost GG
 	NodeArray<int> m_x; //x-coord of the upperleft corner of the nodes 
 	NodeArray<int> m_y; //y-coord of the upperleft corner of the nodes
 	NodeArray<double> m_dx; //double x-coord of the upperleft corner of the nodes 
@@ -95,8 +95,8 @@ protected:
 	NodeArray<double> m_vYScale; //continous realization of Y-Mirror for drawing animation frames
 	NodeArray<IPolyline> m_vOutline; //outline of v in relation to pos of v accounting for rotation and mirroring.
 
-	//IPolyline m_outline; //The Shape of the Gridgraph (not necessarily maintained throughout annealing)
-	Lattice m_lattice;
+	IPolyline m_outline; //The Shape of the Gridgraph (not necessarily maintained throughout annealing)
+	Lattice * m_lattice;
 	
 	node m_HiddenNode;
 	NodeArray<char> m_vState; //returns -1 if node is invisible, 1 if node is temporary, 0 else 
@@ -120,7 +120,7 @@ public:
 	//List<node> &nonDummyNodes(){return m_nonDummy;}
 
 private:
-	void moveToCluster(GridGraph &GGw, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs	
+	void moveGGToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs	
 	List<node> GridGraph::trimCluster(List<node> U, node v);
 
 
@@ -153,21 +153,32 @@ public:
 	bool isTemporary(edge e) {if (m_eState[e]==1)return true; else return false; }; //returns true if edge is currently being tested
 	node getHiddenNode(){return m_HiddenNode;};
 	List<node> &nonDummyNodes(){return m_nonDummy;};
+	List<node> &connectNodes(){return m_vConnect;};
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
-	bool isInside(IPoint p);
-	bool isInside(DPoint p);
+	bool isInside(IPoint p){if (m_lattice) return m_lattice->isInside(p); else return false;}
+	bool isInside(DPoint p){if (m_lattice) return m_lattice->isInside(p); else return false;}
 
 
-	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges
+	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges, (dont forget: update m_pos!)
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
 
 	IPolyline getBox(); //returns bottemleft and upperright cornerpoint of GG
-	IPolyline GridGraph::getOutline(){
-		//std::cout << "calling getOutline on GridGraph #" << id() << std::endl;
-		return m_lattice.outline();}
+	IPolyline GridGraph::getOutline(){ if (m_lattice) return m_lattice->outline(); else return m_outline;}
+	
 
-	void addToLattice(IPolyline line){m_lattice.addLine(line);};
-	void removeFromLattice(IPolyline line){m_lattice.removeLine(line);};
+	void createLattice(){m_lattice = new Lattice;}
+	void fillLattice(); //fills lattice with all geometry
+	void destroyLattice(){delete m_lattice;}
+	 
+	//create new Grid with array [a..b]*[c..d] and initialise all the points.
+	void createGrid(int a, int b, int c, int d){m_Grid = new Grid(a,b,c,d);}	
+	void fillGrid(); //fills Grid with all geometry
+	void destroyGrid(){delete m_Grid;}
+	
+	void addToLattice(IPolyline line){if (m_lattice) m_lattice->addLine(line);};
+	void removeFromLattice(IPolyline line){if (m_lattice) m_lattice->removeLine(line);};
+	void addToGrid(IPolyline line){if (m_Grid) m_Grid->registerLine(line);}
+	void removeFromGrid(IPolyline line){if (m_Grid) m_Grid->restoreLine(line);}
 	
 
 	/*Initiate the GridGraph with a valid starting layout, preferrably with enough free space to move nodes around.
@@ -209,9 +220,10 @@ public:
 	double &dy(node v){return m_dy[v];};
 			
 	IPoint getPos(node v){return IPoint(m_x[v],m_y[v]);}; //!< position of node v (NOT NECESSARILY upper-left corner of the bounding box, just origin of GG coord-sys)
-	IPoint &getPos(){return m_pos;};
+	DPoint getdPos(node v){return DPoint(m_dx[v],m_dy[v]);};
+	//IPoint &getPos(){return m_pos;};
 	void setPos(node v, IPoint pos){m_x[v] = pos.m_x; m_y[v] = pos.m_y;}; //!< Set the position of node v without consideration for the Grid
-	DPoint &dPos(){return m_dPos;}; //position of GG's origin in relation to global coord
+	//DPoint &dPos(){return m_dPos;}; //position of GG's origin in relation to global coord
 
 	char &rot(node v){return m_vRotation[v];};	
 	double &dRot(node v){return m_vDRotation[v];};

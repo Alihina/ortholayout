@@ -6,6 +6,7 @@
 #include <ogdf/basic/GraphAttributes.h>
 #include <ogdf/basic/GraphCopy.h>
 #include <ogdf/basic/Thread.h>
+#include <ogdf/basic/Stack.h>
 #include <ogdf/basic/CriticalSection.h>
 #include <ogdf/internal/energybased/IntersectionRectangle.h>
 #include <ogdf/internal/energybased/AdjacencyOracle.h>
@@ -131,7 +132,7 @@ private:
 	void OnMousewheel();
 	void OnMouseMotion();
 
-	void clusterize(int p);
+	void clusterize(int p); //MARKED FOR DELETION
 	void displayParentarray(const NodeArray<List<node>> &parentarray);
 	bool hasAncestor(node v, node w, const NodeArray<List<node>> &parentarray); //checks is w is an ancestor of v
 	void bfs_recurse(node v, 
@@ -143,12 +144,14 @@ private:
 	void addParents(node v, const NodeArray<List<node>> &parentarray, List<node> &found);
 
 	double GraphIO::dist(DPoint p1,DPoint p2){return (p1-p2).norm();};
+	double GraphIO::dist(IPoint p1, IPoint p2){return dist(DPoint(p1.m_x,p1.m_y),DPoint(p2.m_x,p2.m_y));}
 	double GraphIO::dist(node v, DPoint p2){
 		if(GridMode) return dist(DPoint(currentGG.dx(v),currentGG.dy(v)),p2);
 		return dist(DPoint(currentGA.x(v),currentGA.y(v)),p2);
 	};
+
 	double GraphIO::dist(DPoint p1, node v){
-		if (GridMode) return dist(p1, DPoint(currentGG.dx(v),currentGG.dy(v)));
+		if (GridMode) return dist(p1, DPoint(activeGG->dx(v),activeGG->dy(v))+activeOff);
 		return dist(p1, DPoint(currentGA.x(v),currentGA.y(v)));};
 
 	node getNode(int x, int y); //select node at view coordinates x,y
@@ -160,6 +163,11 @@ private:
 	void brushDeselect();
 	List<node> brushFind();
 	void breadthSelect();
+	template <typename E> ListIterator<E> cyclicSucc(List<E> List, ListIterator<E> it){
+		if (it.succ().valid()) return it.succ(); else return List.begin();}
+	template <typename E> ListIterator<E> cyclicPred(List<E> List, ListIterator<E> it){
+		if (it.pred().valid()) return it.pred(); else return List.rbegin();}
+
 
 	void displayNodeInformation(node v);
 	bool checkIdConsistency();
@@ -167,8 +175,8 @@ private:
 	void set_pixel(int x, int y);
 	void drawGrid();
 
-	void zoomView(float a, DPoint center);
-	void zoomTo(float newZoom);
+	void zoomView(double a, IPoint center);
+	void zoomTo(double newZoom);
 
 
 	void copyAttributes(GraphAttributes &srcGA, GraphCopy &srcGC, GraphAttributes &trgGA, GraphCopy &trgGC);	
@@ -177,28 +185,36 @@ private:
 
 	void animate();	
 	void drawTarget();
-	void animateNode(node v, float t); // moves v to appropriate position on 100*t% animation	
-	float f(float t); //animation response curve
+	void animateNode(node v, double t); // moves v to appropriate position on 100*t% animation	
+	double f(double t); //animation response curve
 
 	void drawSelected();
 	void drawSelectedNode(node v);
-	void drawSelectedOutline(GridGraph &GG);
+	void drawSelectedOutline(GridGraph &GG, DPoint pos);
 	void drawSelectedEdge(edge e);
 	void drawGraph();
 	void drawNode(GraphAttributes &GA, node v, int alpha);
 	void drawEdge(GraphAttributes &GA, edge e, int alpha);	
-	void drawNode(GridGraph &GG, node v, int alpha);
-	void drawEdge(GridGraph &GG, edge e, int alpha);
-	void drawOutline(GridGraph &GG);
-	void drawGG(GridGraph &GG);
+	void drawNode(GridGraph &GG, DPoint pos, node v, int alpha);
+	void drawConnect(GridGraph &GG, DPoint pos, node v, int alpha);
+	void drawEdge(GridGraph &GG, DPoint pos, edge e, int alpha);
+	void drawOutline(GridGraph &GG, DPoint pos);
+	void drawGG(GridGraph &GG, DPoint pos);
+	void drawLine(IPoint p1, IPoint p2, double size); //draw line with thickness size in global coordinate (zoomable)
+	void drawLine(IPoint p1, IPoint p2, int size); //draw line with thickness size in pixels (fix size at every zoom level)
+	void drawOutline(IPolyline outline, int size); //draws outline of thickness size
+	void drawOutline(IPolyline outline, double dsize); //draws outline of thickness size
 
+	void drawOutlineBorder(IPolyline outline, int size);
+	
 	void clrscr();
 
 	void recalcGscale(); ///> Calculate the Scale-to-fit factor for the current Graph&Window
-	DPoint g2v(DPoint g); //convert global coordinates to Onscreen coordinates
-	DPoint v2g(DPoint v); //convert Onscreen coordinates to global coordinates
-	DPoint g2v(IPoint g); //convert global coordinates to Onscreen coordinates
+	IPoint g2v(DPoint g); //convert global coordinates to Onscreen coordinates
+	IPolyline g2v(IPolyline line); //convert global coordinates to Onscreen coordinates
+	IPolyline g2v(DPolyline line); //convert global coordinates to Onscreen coordinates
 	DPoint v2g(IPoint v); //convert Onscreen coordinates to global coordinates
+	IPoint g2v(IPoint g); //convert global coordinates to Onscreen coordinates
 	double g2v(double a); //convert global length to Onscreen coordinates
 	double v2g(double a); //convert Onscreen length to global coordinates
 	
@@ -209,7 +225,6 @@ private:
 	SDL_Renderer *rend;
 	SDL_Event event;
 
-    Lattice testLattice;
 	const Graph *m_pGraph;
 	const GraphAttributes *m_pGA;
 	const GridGraph *m_pGG;
@@ -221,6 +236,10 @@ private:
 	
 	GraphCopy currentCopy;
 	GridGraph currentGG;
+	GridGraph * activeGG;
+	DPoint activeOff;
+	Stack<GridGraph *> activeStack;
+	Stack<DPoint> OffStack;
 	GraphAttributes currentGA;
 	
 	GraphCopy animTargetCopy;
@@ -241,6 +260,7 @@ private:
 	bool key_KP_minus;
 	bool key_shift;
 	bool key_strg;
+	bool key_alt;
 	bool mouse_LB;
 	bool mouse_RB;
 
@@ -253,9 +273,9 @@ private:
 
 	DPoint offset;  //viewport panning offset
 	DPoint temp_offset; //used for scrolling
-	float zoom; //current zoom factor
-	float Gscale; //Scale-to-fit factor for the Graph
-	DPoint MouseDownCoord;
+	double zoom; //current zoom factor
+	double Gscale; //Scale-to-fit factor for the Graph
+	IPoint MouseDownCoord;
 
 	int brushSize;
 	int winw; //window width
