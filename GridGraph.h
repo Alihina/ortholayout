@@ -99,6 +99,7 @@ protected:
 	Lattice * m_lattice;
 	
 	node m_HiddenNode;
+	node m_TemporaryNode;
 	NodeArray<char> m_vState; //returns -1 if node is invisible, 1 if node is temporary, 0 else 
 	EdgeArray<char> m_eState; //returns -1 if edge is invisible, 1 if edge is temporary, 0 else
 	
@@ -137,7 +138,7 @@ public:
 	bool operator==(const GridGraph &GG) const{return (this->id() == GG.id());};
 	//A destructor might prove neccessary in the end
 	
-	node addNode(node orig); //adds a node, returns the new node, takes care of consequential edges and connections
+	node addNode(node orig); //adds a node, returns the new node, takes care of consequential edges and connections	
 	node addInnerNode(node orig, node src); //adds a node that was in a subGG, returns the new node, takes care of consequential edges and connections
 	edge addEdge(edge orig); //never used (?)
 	void displayDebug();
@@ -153,6 +154,7 @@ public:
 	bool isTemporary(node v) {if (m_vState[v]==1)return true; else return false; }; //returns true if node is currently being tested
 	bool isTemporary(edge e) {if (m_eState[e]==1)return true; else return false; }; //returns true if edge is currently being tested
 	node getHiddenNode(){return m_HiddenNode;};
+	node getTemporaryNode(){return m_TemporaryNode;};
 	List<node> &nonDummyNodes(){return m_nonDummy;};
 	List<node> &connectNodes(){return m_vConnect;};
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 

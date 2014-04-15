@@ -41,7 +41,7 @@ Grid::Grid(int a, int b, int c, int d) {
 	for (int i = a; i <= b; ++i) {
 		for (int j = c; j <= d; ++j) {
 			m_Grid(i,j).v_node = newNode();
-			m_Grid(i,1).h_node = newNode();
+			m_Grid(i,j).h_node = newNode();
 			m_Grid(i,j).changelayer = newEdge(m_Grid(i,j).v_node,m_Grid(i,j).h_node);
 			x_coord[m_Grid(i,j).h_node] = i;
 			y_coord[m_Grid(i,j).h_node] = j;
@@ -303,8 +303,8 @@ bool Grid::findEdge(IPoint A, IPolyline outline, IPolyline &line) {
 }
 
 void Grid::registerPoint(IPoint A) {
-	delNode(m_Grid(A.m_x,A.m_y).v_node);
-	delNode(m_Grid(A.m_x,A.m_y).h_node);
+	if (m_Grid(A.m_x,A.m_y).v_node) delNode(m_Grid(A.m_x,A.m_y).v_node);
+	if (m_Grid(A.m_x,A.m_y).h_node) delNode(m_Grid(A.m_x,A.m_y).h_node);
 	//delEdge(m_Grid(A.m_x,A.m_y).changelayer) //prolly unneccecary.
 	m_Grid(A.m_x,A.m_y).v_node = NULL;
 	m_Grid(A.m_x,A.m_y).h_node = NULL;
@@ -332,7 +332,7 @@ void Grid::registerLine(IPolyline E) {
 			}
 			for (; i < j;++i) {
 				if (m_Grid(last.m_x,i).v_node != NULL ){
-					delNode(m_Grid(last.m_x,i).v_node);
+					if (m_Grid(last.m_x,i).v_node) delNode(m_Grid(last.m_x,i).v_node);
 					m_Grid(last.m_x,i).v_node = NULL;
 				}
 			}
@@ -349,7 +349,7 @@ void Grid::registerLine(IPolyline E) {
 			}
 			for (; i < j; ++i) {
 				if (m_Grid(i,last.m_y).h_node != NULL) {
-					delNode(m_Grid(i,last.m_y).h_node);
+					if (m_Grid(i,last.m_y).h_node) delNode(m_Grid(i,last.m_y).h_node);
 					m_Grid(i,last.m_y).h_node = NULL;
 				}
 			}

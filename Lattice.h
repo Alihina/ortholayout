@@ -12,7 +12,7 @@ using namespace ogdf;
 
 
 
-class Lattice: public Graph
+class Lattice: public Graph //FixFlag: add references to original edges to all edges so crossings can be conveyed to the calling function.
 {
 private:
 	NodeArray<IPoint> nodePos;

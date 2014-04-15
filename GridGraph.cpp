@@ -369,48 +369,71 @@ void GridGraph::acceptPos() {
 }
 
 void GridGraph::rejectPos() {
-	////and delete temprary
-	//ListIterator<node> itt;
-	////delete invisible
-	//for (ListIterator<node> it = nonDummyNodes().begin();it.valid();it=itt) {
-	//	itt = it.succ();
-	//	if (m_vState[(*it)]==1) { 
-	//		m_Grid.restoreFill(outline von (*it));
-	//		delNode(*it);
-	//	}
+	//and delete temprary
+	ListIterator<node> itt;
+	//delete invisible
+	//FixFlag: I can do that better
 
-	//}
-	//edge f;
-	//for ((e)=firstEdge();(e);(e)=(f)) {
-	//	(f)= (e)->succ();
-	//	if (m_eState[e]==1) {
-	//		m_Grid.restoreline(outline von (e));
-	//		delEdge(e); 
-	//	}
-	//}
+	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();it=itt) {
+		itt = it.succ();
+		if (m_vState[(*it)]==1) { 
+			m_Grid->restoreFill(m_vOutline[*it]);
+			delNode(*it);
+		}
 
-	////keep invisible
-	//for (ListIterator<node> it = nonDummyNodes().begin();it.valid();++it) {
-	//	if (m_vState[(*it)]==-1) { 
-	//		m_Grid.registerfill(outline von (*it));
-	//		m_vState[(*it)]=0; 
-	//	}
-	//}
-	//edge e;
-	//for ((e)=firstEdge();(e);(e)=(e)->succ()) {
-	//	if (m_eState[e]==-1) {
-	//		m_Grid.registerline(outline von ((e)));
-	//		m_eState[e]=0; 
-	//	}
-	//}
-	
+	}
+	edge e;
+	edge f;
+	for ((e)=firstEdge();(e);(e)=(f)) {
+		(f)= (e)->succ();
+		if (m_eState[e]==1){ 
+			addToGrid(edgeline(e));
+			delEdge(e); 
+		}
+	}
+
+	//keep invisible
+	for (ListIterator<node> it = nonDummyNodes().begin();it.valid();++it) {
+		if (m_vState[(*it)]==-1) { 
+			m_Grid->registerFill(m_vOutline[*it]);
+			m_vState[(*it)]=0; 
+		}
+	}	
+	for ((e)=firstEdge();(e);(e)=(e)->succ()) {
+		if (m_eState[e]==-1) {
+			addToGrid(edgeline(e));
+			m_eState[e]=0; 
+		}
+	}
+	if (m_TemporaryNode) m_nonDummy.del(m_nonDummy.get(m_nonDummy.search(m_TemporaryNode)));
+	m_HiddenNode = NULL;
+	m_TemporaryNode = NULL;
+	//m_nonDummy.popBack(); //might be a little faster but less save
+
 }
 
 bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror) {
 	//IPoint newpos = IPoint(getPos(v).m_x + pos.m_x, getPos(v).m_y + pos.m_y);	
+	//FixFlag: account for rotation and mirroring (in GraphIO first)
+	//FixFlag: See if target space is free first using Lattice, recalc all edges that are in the way.
+	m_IOprep = false;
+	std::cout << pos << std::endl;
 	m_HiddenNode = v;
 	m_vState[v] = -1;
+	edge e;
+	forall_adj_edges(e,v){
+		m_eState[e] = -1;
+	}
+	node w = newNode(); 
+	m_nonDummy.pushBack(w);
+	m_TemporaryNode = w;
+	m_vState[w] = 1;
+	setPos(w, pos); 
+	m_vOrig[w] = m_vOrig[v]; //FixFlag: think about wether to set w as they new copy and revert at reject or wait for accept.
+	m_vOutline[w] = m_vOutline[v];
+	m_vGridGraph[w] = m_vGridGraph[v];
 
+	//FixFlag: connect edges.
 
 
 	//find out the position to go to and see if it's free:

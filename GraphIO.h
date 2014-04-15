@@ -190,16 +190,16 @@ private:
 
 	void drawSelected();
 	void drawSelectedNode(node v);
-	void drawSelectedOutline(GridGraph &GG, DPoint pos);
+	void drawSelectedOutline(GridGraph &GG, DPoint pos, bool choosecolor = true);
 	void drawSelectedEdge(edge e);
 	void drawGraph();
 	void drawNode(GraphAttributes &GA, node v, int alpha);
 	void drawEdge(GraphAttributes &GA, edge e, int alpha);	
-	void drawNode(GridGraph &GG, DPoint pos, node v, int alpha);
+	void drawNode(GridGraph &GG, DPoint pos, node v, int alpha, bool chooseColor = true);
 	void drawConnect(GridGraph &GG, DPoint pos, node v, int alpha);
 	void drawEdge(GridGraph &GG, DPoint pos, edge e, int alpha);
-	void drawOutline(GridGraph &GG, DPoint pos);
-	void drawGG(GridGraph &GG, DPoint pos);
+	void drawOutline(GridGraph &GG, DPoint pos, int alpha);
+	void drawGG(GridGraph &GG, DPoint pos, int alpha);
 	void drawLine(IPoint p1, IPoint p2, double size); //draw line with thickness size in global coordinate (zoomable)
 	void drawLine(IPoint p1, IPoint p2, int size); //draw line with thickness size in pixels (fix size at every zoom level)
 	void drawOutline(IPolyline outline, int size); //draws outline of thickness size
@@ -213,7 +213,7 @@ private:
 	IPoint g2v(DPoint g); //convert global coordinates to Onscreen coordinates
 	IPolyline g2v(IPolyline line); //convert global coordinates to Onscreen coordinates
 	IPolyline g2v(DPolyline line); //convert global coordinates to Onscreen coordinates
-	DPoint v2g(IPoint v); //convert Onscreen coordinates to global coordinates
+	DPoint v2g(IPoint v); //convert Onscreen coordinates to global coordinates	
 	IPoint g2v(IPoint g); //convert global coordinates to Onscreen coordinates
 	double g2v(double a); //convert global length to Onscreen coordinates
 	double v2g(double a); //convert Onscreen length to global coordinates
@@ -265,6 +265,7 @@ private:
 	bool mouse_RB;
 
 	bool animating;
+	bool tryMove;
 
 	node selNode;
 	List<node> selNodes;
@@ -275,7 +276,8 @@ private:
 	DPoint temp_offset; //used for scrolling
 	double zoom; //current zoom factor
 	double Gscale; //Scale-to-fit factor for the Graph
-	IPoint MouseDownCoord;
+	IPoint MDcoord;
+	IPoint moveVect;
 
 	int brushSize;
 	int winw; //window width
