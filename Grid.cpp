@@ -33,10 +33,10 @@ Grid::Grid() {
 }
 
 Grid::Grid(int a, int b, int c, int d) {
-	std::cout << a << " " << b << " " << c << " " << d << std::endl;
+	//std::cout << a << " " << b << " " << c << " " << d << std::endl;  //only debug
 	m_Grid = Array2D<Gridpoint> (a,b,c,d);
-	NodeArray<int> x_coord(*this);
-	NodeArray<int> y_coord(*this);
+	x_coord = NodeArray<int>(*this);
+	y_coord = NodeArray<int>(*this);
 	//make all nodes and changelayer edges
 	for (int i = a; i <= b; ++i) {
 		for (int j = c; j <= d; ++j) {
@@ -79,6 +79,8 @@ bool Grid::findEdge(IPoint A, IPoint B, IPolyline &line) { // The IPolyline cont
 	node n,m;
 	n = NULL;
 	edge e;
+	bfsqueue.append(m_Grid(A.m_x,A.m_y).h_node);
+	bfsqueue.append(m_Grid(A.m_x,A.m_y).v_node);
 	while (!bfsqueue.empty()) { //bfsloop
 		n = bfsqueue.pop();
 		if (n==m_Grid(B.m_x,B.m_y).h_node){
@@ -107,7 +109,7 @@ bool Grid::findEdge(IPoint A, IPoint B, IPolyline &line) { // The IPolyline cont
 	
 	while (n!=NULL){
 		c = IPoint(x_coord[n],y_coord[n]);
-		if (c != line.back()) {
+		if ((line.empty()) || (c != line.back())) {
 			line.pushBack(c);
 		}
 		n=parent[n];
@@ -190,8 +192,8 @@ bool Grid::findEdge(IPoint A, IPolyline outline, IPolyline &line) {
 				j = (*it).m_x;
 			}
 			else {
-				i = last.m_x + 1;
-				j = (*it).m_x;
+				i = (*it).m_x + 1;
+				j = last.m_x;
 			}
 			for (; i < j; ++i) {
 				outpoints.pushBack(IPoint(i,last.m_y));
@@ -200,7 +202,7 @@ bool Grid::findEdge(IPoint A, IPolyline outline, IPolyline &line) {
 		else {
 			OGDF_ASSERT(1==0);
 		}
-		IPoint last = *it;
+		last = *it;
 		++it;
 	}
 	//we now have the outpoints
@@ -332,7 +334,8 @@ void Grid::registerLine(IPolyline E) {
 			}
 			for (; i < j;++i) {
 				if (m_Grid(last.m_x,i).v_node != NULL ){
-					if (m_Grid(last.m_x,i).v_node) delNode(m_Grid(last.m_x,i).v_node);
+					//if (m_Grid(last.m_x,i).v_node) 
+					delNode(m_Grid(last.m_x,i).v_node);
 					m_Grid(last.m_x,i).v_node = NULL;
 				}
 			}
@@ -344,12 +347,13 @@ void Grid::registerLine(IPolyline E) {
 				j = (*it).m_x;
 			}
 			else {
-				i = last.m_x + 1;
-				j = (*it).m_x;
+				i = (*it).m_x + 1;
+				j = last.m_x;
 			}
 			for (; i < j; ++i) {
 				if (m_Grid(i,last.m_y).h_node != NULL) {
-					if (m_Grid(i,last.m_y).h_node) delNode(m_Grid(i,last.m_y).h_node);
+					//if (m_Grid(i,last.m_y).h_node) 
+					delNode(m_Grid(i,last.m_y).h_node);
 					m_Grid(i,last.m_y).h_node = NULL;
 				}
 			}
@@ -357,7 +361,7 @@ void Grid::registerLine(IPolyline E) {
 		else {
 			OGDF_ASSERT(1==0);
 		}
-		IPoint last = *it;
+		last = *it;
 		++it;
 	}
 }
@@ -675,8 +679,8 @@ void Grid::restoreLine(IPolyline E, bool ends) {
 				j = (*it).m_x;
 			}
 			else {
-				i = last.m_x + 1;
-				j = (*it).m_x;
+				i = (*it).m_x + 1;
+				j = last.m_x;
 			}
 			for (; i < j; ++i) {
 				restorePoint(IPoint(i,last.m_y));
@@ -685,7 +689,7 @@ void Grid::restoreLine(IPolyline E, bool ends) {
 		else {
 			OGDF_ASSERT(1==0);
 		}
-		IPoint last = *it;
+		last = *it;
 		++it;
 	}
 }
@@ -1031,7 +1035,7 @@ void Grid::restoreFill(IPolyline E) {
 }
 
 bool Grid::isFree(IPoint A) { //returns true iff both v_node and h_node are "free", i.e. present
-	if (m_Grid(A.m_x,A.m_y).h_edge != NULL && m_Grid(A.m_x,A.m_y).v_edge != NULL) {
+	if (m_Grid(A.m_x,A.m_y).h_node != NULL && m_Grid(A.m_x,A.m_y).v_node != NULL) {
 		return true;
 	}
 	else {
@@ -1070,8 +1074,8 @@ bool Grid::isFreeLine(IPolyline E) {
 				j = (*it).m_x;
 			}
 			else {
-				i = last.m_x + 1;
-				j = (*it).m_x;
+				i = (*it).m_x + 1;
+				j = last.m_x;
 			}
 			for (; i < j; ++i) {
 				if (!isFree(IPoint(i,last.m_y))) {return false;}
@@ -1080,7 +1084,7 @@ bool Grid::isFreeLine(IPolyline E) {
 		else {
 			OGDF_ASSERT(1==0);
 		}
-		IPoint last = *it;
+		last = *it;
 		++it;
 	}
 	return true;
