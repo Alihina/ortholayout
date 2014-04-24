@@ -15,10 +15,18 @@ using namespace ogdf;
 class Lattice: public Graph //FixFlag: add references to original edges to all edges so crossings can be conveyed to the calling function.
 {
 private:
+	static unsigned int instanceCount; //counts the # of GridGraph instances to assign unique ids
+	unsigned int m_id;
+	unsigned int id() const{return m_id;}
 	NodeArray<IPoint> nodePos;
 	EdgeArray<int> height;
 	EdgeArray<int> start;
 	EdgeArray<int> end;
+	EdgeArray<node> srcN; //init to this
+	EdgeArray<edge> srcE; //init to this
+	NodeArray<List<edge>> lineN; //init to GG
+	EdgeArray<List<edge>> lineE; //init to GG
+
 	List<edge> hor;
 	List<edge> vert;
 	List<node> Nodes; //lexicographically sorted array of nodes
@@ -46,18 +54,30 @@ private:
 	void adjSort(adjEntry newAdj);
 	edge getRight(edge e); //get the edge that's to the right of e, create a new edge if direction is wrong;
 	void sortIn(edge e); //sorts e into hor and vert;
-
-public:	
+	void displayNodeInformation(node v);
+public:		
 	Lattice();
+	Lattice(Graph &G);
 	Lattice(const Lattice &L);
 	Lattice& operator=(const Lattice &L);
-	void addLine(IPolyline line); //adds Polyline to Lattice and updates BBox and outline
+	bool addLine(IPolyline line,node N); //adds outline line of N to Lattice, returns false and removes line again if there is a node inside.
+	bool addLine(IPolyline line,node N,List<edge> &EList); //adds outline line of N to Lattice, returns false if there is a node inside.
+	void addLine(IPolyline line,edge E); //adds Polyline to Lattice 
+	void addLine(IPolyline line,edge E, List<edge> &EList); //adds Polyline to Lattice, gives back a list of crossed edges.
 	void removeLine(IPolyline line);
+	void removeLine(edge E);
+	void removeLine(node N);
+	List<edge> edgesOn(IPoint p); //returns the edge that lies on p if it exists. (might be 2 even 4)) 
+	node clusterOn(IPoint p); //returns the cluster that p is inside of.
+	void nodeInfoOn(IPoint p);
 	bool isInside(IPoint p);
 	bool isInside(DPoint p);
 	IPolyline outline();
 	IPolyline CalcOutline();
-
+	void checkConsistency();
+	void getConnectedElements(node N, List<edge> &edges, List<node> &nodes); 
+	void getConnectedElements(edge E, List<edge> &edges, List<node> &nodes);
+	void displayLatticeInformation();
 
 };
 #endif

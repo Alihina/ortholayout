@@ -79,7 +79,7 @@ protected:
 	
 
 	NodeArray<GridGraph *> m_vGridGraph; //!< Pointer to the corresponding GridGraph element that the nodes represent, NULL if node is atomic
-	List<GridGraph> m_GGList; //List where the sub GridGraphs are saved.
+	//List<GridGraph> m_GGList; //List where the sub GridGraphs are saved.
 	
 	//IPoint m_pos; //position of this GG's origin in coordinates of the topmost GG
 	//DPoint m_dPos; //position of this GG's origin in coordinates of the topmost GG
@@ -93,7 +93,7 @@ protected:
 	NodeArray<double> m_vDRotation; //continuous rotation of v for drawing animation frames
 	NodeArray<double> m_vXScale; //continous realization of X-Mirror for drawing animation frames
 	NodeArray<double> m_vYScale; //continous realization of Y-Mirror for drawing animation frames
-	NodeArray<IPolyline> m_vOutline; //outline of v in relation to pos of v accounting for rotation and mirroring.
+	NodeArray<IPolyline> m_vOutline; //outline of v in relation to *this accounting for rotation and mirroring. FixFlag: in relation to *this!
 
 	IPolyline m_outline; //The Shape of the Gridgraph (not necessarily maintained throughout annealing)
 	Lattice * m_lattice;
@@ -112,10 +112,18 @@ protected:
 	void findCluster(node v, int p); 
 	List<node> findClusterRecurse(List<node> cluster, int p);
 	edge contract(node v); //joins two edges on node v assuming indeg(v) = outdeg(v) = 1
+	IPolyline translate(IPolyline line, IPoint p);
+	void recalcOutgoing(); //
 
 public:
 	void moveToCluster(node w, node v); //merges w to v and updates the list of original nodes, the list of corresponding nodes and the list of gridgraphs
 	void moveToCluster(List<node> nodes, node v);
+	//=========moveToCluster helper functions: ============
+	void clearLatticeGrid(List<node> nodes);
+	void repairOutgoingLines(node V);
+
+
+
 	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
 	void contract(); //turns all paths into single edges.
 	//List<node> GridGraph::trimCluster(List<node> U, node v);
@@ -132,6 +140,7 @@ public:
 	List<edge> eoutgoing(){return m_eOutgoing;};
 	GridGraph(); //standard constructor, just make it throw an error to make sure it's not used
 	GridGraph(const GridGraph &GG); // construct a GridGraph taht is a copy of GG
+	GridGraph(const Graph &G, GridGraph &GG); //construct a GridGraph that has a single node which is a cluster GG
 	GridGraph(const Graph &G, node orig); // Construct a Gridgraph that represents a single node v
 	GridGraph(const Graph &G); //Costruct a GridGraph that represents a Graph G
 	GridGraph& operator=(const GridGraph& GG);
@@ -139,9 +148,11 @@ public:
 	//A destructor might prove neccessary in the end
 	
 	node addNode(node orig); //adds a node, returns the new node, takes care of consequential edges and connections	
+	node addNode(); //adds a non-dummy node
 	node addInnerNode(node orig, node src); //adds a node that was in a subGG, returns the new node, takes care of consequential edges and connections
 	edge addEdge(edge orig); //never used (?)
 	void displayDebug();
+	void latticeDebug(IPoint p);
 	//returns a pointer to the Gridgraph represented by node v;
 	//GridGraph * subGG(node v){return m_vGridGraph[v];};
 
@@ -160,7 +171,7 @@ public:
 	bool isDummy(node v); //!< returns true if v is a dummynode for the connection 
 	bool isInside(IPoint p){if (m_lattice) return m_lattice->isInside(p); else return false;}
 	bool isInside(DPoint p){if (m_lattice) return m_lattice->isInside(p); else return false;}
-
+	void removeNode(node v);
 
 	void acceptPos(); //deletes all invisible nodes and edges, finalizes temporary nodes and edges, (dont forget: update m_pos!)
 	void rejectPos(); //deletes all temporary nodes and edges, restores invisibles, reverts Grid to original state.
@@ -169,7 +180,7 @@ public:
 	IPolyline GridGraph::getOutline(){ if (m_lattice) return m_lattice->outline(); else return m_outline;}
 	
 
-	void createLattice(){m_lattice = new Lattice;}
+	void createLattice(){m_lattice = new Lattice(*this);}
 	void fillLattice(); //fills lattice with all geometry
 	void destroyLattice(){delete m_lattice;}
 	 
@@ -180,11 +191,15 @@ public:
 	void fillGrid(); //fills Grid with all geometry
 	void destroyGrid(){delete m_Grid;}
 	
-	void addToLattice(IPolyline line){if (m_lattice) m_lattice->addLine(line);};
-	void removeFromLattice(IPolyline line){if (m_lattice) m_lattice->removeLine(line);}
+	void addToLattice(edge E){if (m_lattice) m_lattice->addLine(m_edgeline[E],E);};
+	void addToLattice(node N){if (m_lattice) m_lattice->addLine(m_vOutline[N],N);};
+	void removeFromLattice(edge E){if (m_lattice) m_lattice->removeLine(E);}
+	void removeFromLattice(node N){if (m_lattice) m_lattice->removeLine(N);}
 	void addToGrid(IPolyline line){if (m_Grid) m_Grid->registerLine(line);}
+	void addToGrid(edge e){if (m_Grid) m_Grid->registerLine(m_edgeline[e]);}
 	void addToGrid(IPoint point){if (m_Grid) m_Grid->registerPoint(point);}
 	void removeFromGrid(IPolyline line){if (m_Grid) m_Grid->restoreLine(line);}
+	void removeFromGrid(edge e){if (m_Grid) m_Grid->restoreLine(m_edgeline[e]);}
 	void removeFromGrid(IPoint point){if (m_Grid) m_Grid->restorePoint(point);}
 	
 
@@ -200,7 +215,8 @@ public:
 	The Move fails if either the new position is not free of nodes or if it's impossible to
 	reconnect the edges.
 	rotation values: 0-3* 90° CCW, mirror values: 0:no mirroring, 1 horizontal 2 vertical, */	
-	bool tryMove(node v, IPoint pos, int rotation, int mirror); 
+	bool tryMove(node v, IPoint pos, int rotation, int mirror);
+	bool tryMoveUI(node v, IPoint pos, int rotation, int mirror); // a slower but less error prone version of TryMove, makes sure Grid stays consistent even if assumptions are not met.
 	//bool forceMove(nodev, IPoint pos); possible future addition, force the move by recursively relocating nodes that are in the way.	
 		
 	
@@ -256,14 +272,15 @@ public:
 	static int outlineArea(IPolyline Outline);
 	/////////////////////////////////////////////////////
 
-	List<GridGraph> &GGList(){return m_GGList;};
+	//List<GridGraph> &GGList(){return m_GGList;};
 	GridGraph * subGG(node v){return m_vGridGraph[v];};
 	IPoint getConnection(edge e); //!<given an outgoing edge e returns the position of the connection of the edge.
+	IPoint getConnection(node v, edge e); //!<returns the point at which edge e connects to node v
 
-	List<node> original(node v){return m_vOrig[v];}; 
-	const List<node> original(node v) const{return m_vOrig[v];}; 
-	List<edge> original(edge e){return m_eOrig[e];}; 
-	const List<edge> original(edge e) const{return m_eOrig[e];}; 
+	List<node> & original(node v){return m_vOrig[v];}; 
+	//const List<node> original(node v) const{return m_vOrig[v];}; 
+	List<edge> & original(edge e){return m_eOrig[e];}; 
+	//const List<edge> original(edge e) const{return m_eOrig[e];}; 
 	node Copy(node v){return m_vCopy[v];};
 	edge Copy(edge e){return m_eCopy[e];};
 	node const Copy(node v) const{return m_vCopy[v];};

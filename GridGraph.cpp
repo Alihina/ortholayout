@@ -22,8 +22,7 @@ GridGraph::GridGraph(const Graph &G, node orig){ //DONE!
 	m_eOrig.init(*this);
 	m_vCopy.init(*m_pGraph, NULL);
 	m_eCopy.init(*m_pGraph, NULL);
-	m_IOprep = false;
-	
+	m_IOprep = false;	
 	m_vState.init(*this, 0);
 	m_eState.init(*this, 0);
 
@@ -55,18 +54,97 @@ GridGraph::GridGraph(const Graph &G, node orig){ //DONE!
 
 	
 	adjEntry adj;
-	forall_adj(adj,orig){ //for all adjacent 
-		m_eOutgoing.pushBack(adj->theEdge()); //new outgoing edge
+	forall_adj(adj,orig){ //for all adjacent 		
 		node connect = this->newNode();		
 		m_x[connect] = 0;
 		m_y[connect] = 0;
 		m_vConnect.pushBack(connect);				
 		edge e = newEdge(v,connect);
+		m_eOutgoing.pushBack(e); //new outgoing edge
 		m_eCopy[adj->theEdge()] = e;
-		m_eOrig[e].pushFront(adj->theEdge());		
+		m_eOrig[e].pushFront(adj->theEdge());
+		edge f;
+		forall_listiterators(edge, it ,m_eOrig[e]) std::cout << *it << std::endl;
+		std::cout << "done" << std::endl;
+		forall_listiterators(edge, it ,original(e)) std::cout << *it << std::endl;
+
+
 	}
 
+};
 
+GridGraph::GridGraph(const Graph &G, GridGraph &GG){ //DONE!
+	m_id = instanceCount;
+	instanceCount++;
+	
+	//std::cout << "SINGLENODE GGid: " << m_id << std::endl;
+	m_pGraph = &G;
+	m_vOrig.init(*this);	
+	m_eOrig.init(*this);
+	m_vCopy.init(*m_pGraph, NULL);
+	m_eCopy.init(*m_pGraph, NULL);
+	m_IOprep = false;	
+	m_vState.init(*this, 0);
+	m_eState.init(*this, 0);
+
+	m_edgeline.init(*this);
+	m_dedgeline.init(*this);
+	m_eSpaces.init(*this, -1);
+
+	m_x.init(*this,-1);
+	m_y.init(*this,-1);
+	m_dx.init(*this,-1);
+	m_dy.init(*this,-1);
+	m_vRotation.init(*this,0);
+	m_vXMirror.init(*this,false);
+	m_vYMirror.init(*this,false);
+	m_vDRotation.init(*this,0);
+	m_vXScale.init(*this,1);
+	m_vYScale.init(*this,1);
+	m_vOutline.init(*this);
+	m_vGridGraph.init(*this, NULL);	
+
+	node v = this->newNode();
+	m_nonDummy.pushFront(v);
+	forall_listiterators(node,it,GG.nonDummyNodes()){
+		List<node> origNodes = GG.m_vOrig[*it];
+		m_vOrig[v].conc(origNodes);  
+	}
+	forall_listiterators(node,it,m_vOrig[v]){
+		m_vCopy[*it] = v;
+	}
+	m_vGridGraph[v] = &GG;
+
+	m_x[v] = 0;
+	m_y[v] = 0;
+	List<edge> adjEdges;
+	
+	forall_listiterators(node,it,m_vOrig[v]){
+		adjEntry adj;
+		forall_adj(adj,*it){
+			node w = adj->twinNode();
+			edge e = adj->theEdge();
+			if(m_vCopy[w] == NULL)
+				if (adjEdges.search(e) == -1) adjEdges.pushBack(e);
+		}
+	}
+	
+	adjEntry adj;
+	forall_listiterators(edge,it,adjEdges){
+		node connect = this->newNode();		
+		m_x[connect] = 0;
+		m_y[connect] = 0;
+		m_vConnect.pushBack(connect);				
+		edge e = newEdge(v,connect);
+		m_eOutgoing.pushBack(e); //new outgoing edge
+		m_eCopy[*it] = e;
+		m_eOrig[e].pushFront(*it);
+		//edge f;
+		//std::cout << "original edges in constructor for edge " << e->index() <<std::endl;
+		//forall_listiterators(edge, it ,original(e)) std::cout << *it << " Copy: " << m_eCopy[*it]->index() << std::endl; 
+		//std::cout << std::endl;
+
+	}
 
 };
 
@@ -186,8 +264,8 @@ GridGraph::GridGraph(const GridGraph &GG){
 		m_vState[v2] = GG.m_vState[v1];
 
 		if (GG.m_vGridGraph[v1]){
-			m_GGList.pushFront(GridGraph(*GG.m_vGridGraph[v1])); //make a copy of any sub-GG
-			m_vGridGraph[v2] = &m_GGList.front();
+			//m_GGList.pushFront(GridGraph(*GG.m_vGridGraph[v1])); //make a copy of any sub-GG
+			m_vGridGraph[v2] = new GridGraph(*(GG.m_vGridGraph[v1]));
 		}
 
 
@@ -196,7 +274,10 @@ GridGraph::GridGraph(const GridGraph &GG){
 			node w2 = trgCopy[adj->twinNode()];
 			edge e1 = adj->theEdge();
 			if (w2 != NULL){ //if w2 is already in GG
-				edge e2 = this->newEdge(v2,w2); //create the new edge
+				edge e2 = NULL;
+				if (e1->source() == v1) e2 = this->newEdge(v2,w2); //create the new edge maintaining orientation
+				else e2 = this->newEdge(w2,v2);
+				
 				ListIterator<edge> ite;
 				m_eOrig[e2] = GG.m_eOrig[e1]; //copy original edge list
 				forall_listiterators(edge, ite, m_eOrig[e2]){ // copy copy edge list
@@ -210,18 +291,19 @@ GridGraph::GridGraph(const GridGraph &GG){
 		}
 	}
 	//copy all general members
-	m_Grid = GG.m_Grid;
+	//m_Grid = GG.m_Grid;
 	//m_dPos = GG.m_dPos;
-	m_eOutgoing = GG.m_eOutgoing; //THIS IS NOT WRONG!!
+	//m_eOutgoing = GG.m_eOutgoing; //THIS IS VERY WRONG!!
 	//m_vConnect = GG.m_vConnect; //THIS IS WRONG!!
 	//m_nonDummy == GG.m_nonDummy; //THIS IS WRONG!!
-	forall_listiterators(node,it,GG.m_vConnect){
+	forall_listiterators(node,it,GG.m_vConnect){		
 		m_vConnect.pushBack(trgCopy[*it]);
+		m_eOutgoing.pushBack(trgCopy[*it]->firstAdj()->theEdge());
 	}
 	forall_listiterators(node,it,GG.m_nonDummy){
 		m_nonDummy.pushBack(trgCopy[*it]);
 	}
-	m_lattice = GG.m_lattice;
+	//m_lattice = GG.m_lattice; I deliberately don't copy lattice or grid
 	//std::cout << "copy constructor call" << std::endl;
 	//displayDebug();
 
@@ -231,7 +313,7 @@ GridGraph::GridGraph(const GridGraph &GG){
 GridGraph& GridGraph::operator=(const GridGraph& GG){
 	this->clear();
 	//Standard GridGraph initialization
-	std::cout << "ASSIGNMENT: " << m_id << std::endl;
+	//std::cout << "ASSIGNMENT: " << m_id << std::endl;
 	m_pGraph = &GG.constGraph();
 	m_vOrig.init(*this);	
 	m_eOrig.init(*this);	
@@ -291,8 +373,8 @@ GridGraph& GridGraph::operator=(const GridGraph& GG){
 		m_vOutline[v2] = GG.m_vOutline[v1];
 		m_vState[v2] = GG.m_vState[v1];
 		if (GG.m_vGridGraph[v1]){
-			m_GGList.pushFront(GridGraph(*GG.m_vGridGraph[v1])); //make a copy of any sub-GG
-			m_vGridGraph[v2] = &m_GGList.front();
+			//m_GGList.pushFront(GridGraph(*GG.m_vGridGraph[v1])); //make a copy of any sub-GG
+			m_vGridGraph[v2] = new GridGraph(*(GG.m_vGridGraph[v1]));
 		}
 
 
@@ -321,9 +403,9 @@ GridGraph& GridGraph::operator=(const GridGraph& GG){
 		}
 	}
 	//copy all general members
-	m_Grid = GG.m_Grid;
+	//m_Grid = GG.m_Grid;
 	//m_dPos = GG.m_dPos;
-	m_lattice = GG.m_lattice;
+	//m_lattice = GG.m_lattice;
 
 	//Debug information
 	//adjEntry adj;
@@ -412,10 +494,22 @@ void GridGraph::rejectPos() {
 
 }
 
-bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror) {
+IPolyline GridGraph::translate(IPolyline line, IPoint p){
+	forall_nonconst_listiterators(IPoint, it, line){
+		(*it).m_x += p.m_x;
+		(*it).m_y += p.m_y;
+	}
+	return line;
+}
+
+bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror) {/* copy tryMoveUI removing relevant code*/
+	return false;
+}
+
+bool GridGraph::tryMoveUI(node v, IPoint pos, int rotation, int mirror) {
 	//IPoint newpos = IPoint(getPos(v).m_x + pos.m_x, getPos(v).m_y + pos.m_y);	
 	//FixFlag: account for rotation and mirroring (in GraphIO first)
-	//FixFlag: See if target space is free first using Lattice, recalc all edges that are in the way.
+	//FixFlag: recalc all edges that are in the way.	
 	m_IOprep = false;
 	std::cout << pos << std::endl;
 	m_HiddenNode = v;
@@ -423,16 +517,33 @@ bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror) {
 	edge e;
 	forall_adj_edges(e,v){
 		m_eState[e] = -1;
-	}
+	}	
+
 	node w = newNode(); 
 	m_nonDummy.pushBack(w);
 	m_TemporaryNode = w;
 	m_vState[w] = 1;
 	setPos(w, pos); 
+	IPoint transV(pos.m_x - x(v), pos.m_y - y(v));
 	m_vOrig[w] = m_vOrig[v]; //FixFlag: think about wether to set w as they new copy and revert at reject or wait for accept.
-	m_vOutline[w] = m_vOutline[v];
-	m_vGridGraph[w] = m_vGridGraph[v];
-
+	m_vOutline[w] = translate(m_vOutline[v],transV);
+	std::cout << "out" << m_vOutline[w].front() << "line" << std::endl;
+	m_vGridGraph[w] = m_vGridGraph[v];	
+	if (subGG(v)) m_lattice->removeLine(v);
+	//do the edges;
+	if (subGG(v)){
+		bool B = m_lattice->addLine(m_vOutline[w],v);
+		if (!B) return false;				
+		if (m_lattice->clusterOn(m_vOutline[w].front()) != NULL) return false;
+	}else{
+		node u;
+		forall_nodes(u,*this){
+			if (getPos(u) == getPos(w)) return false;
+			if (m_lattice->clusterOn(getPos(w)) != NULL) return false;
+		}
+	}
+	return true;
+	
 	//FixFlag: connect edges.
 
 
@@ -449,7 +560,6 @@ bool GridGraph::tryMove(node v, IPoint pos, int rotation, int mirror) {
 		//if it does, register the line, make a new edge and fill all the EdgeArrays and stuff
 	//also fail if any of the edges are too short to contain all the degree-2-verts
 	//also somehow keep track of how many edges go through an edge.
-	return true;
 }
 
 IPolyline GridGraph::getBox(){
@@ -512,31 +622,443 @@ void GridGraph::findCluster(node v, int p){
 
 	cluster.pushFront(v);
 	cluster = findClusterRecurse(cluster, p);
+	//std::cout << "found bfs, adding to cluster" << std::endl;
 	moveToCluster(cluster,v);
+	//std::cout << "done move List to Cluster" << std::endl;
 
 }; 
 
-void GridGraph::moveToCluster(List<node> nodes, node v){
-	nodes = trimCluster(nodes,v);	
-	nodes.del(nodes.get(nodes.search(v)));
-	ListIterator<node> nNode;
-	while (!nodes.empty()){
-		nNode = ListIterator<node>();
-		forall_nonconst_listiterators(node,it,nodes){ //find a neighbor of v in nodes
-			bool neighbor = false;
-			adjEntry adj;
-			forall_adj(adj,*it){
-				if (adj->twinNode() == v) neighbor = true;
-			}
-			if (neighbor){
-				nNode = it;
+void GridGraph::repairOutgoingLines(node V){
+	GridGraph &GG = *subGG(V);
+	forall_listiterators(edge,it,GG.m_eOutgoing){		
+		//if (edges.search(*it) == -1) continue; //if outgoing is not new it need not be considered
+		if (GG.m_edgeline[*it].empty()) continue; // e is an invisible dummyedge
+		if (m_lattice == NULL) {
+			GG.m_edgeline[*it] = IPolyline();
+			continue;
+		}
+		edge e = *it;
+		//std::cout << "shortening edgeline of " << e << " original is" << original(e).front()
+		edge E = Copy(GG.original(e).front()); //corresponding edge in *this
+		node connect = e->target();
+		IPolyline line = GG.m_edgeline[e]; //even though the line was copied from outer GG it could still be empty
+		//std::cout << "GG.getConection: " << GG.getConnection(e->source(), e) << std::endl;
+		std::cout << "getting conection "<<  e->source() << " " << e << std::endl;
+		if (GG.m_edgeline[e].front() != GG.getConnection(e->source(), e)){
+			//std::cout << "reversing line" << std::endl;
+			line.reverse();			
+		}
+
+		//std::cout << "oldline ";
+		//forall_listiterators(IPoint, it, line) std::cout << *it << "->";
+		//std::cout << std::endl;
+		if (line.empty()) continue;
+		IPolyline newline;
+		IPolyline outline = GG.getOutline();
+		//std::cout << "outline ";
+		//forall_listiterators(IPoint, it, outline) std::cout << *it << "->";
+		//std::cout << std::endl;
+		if (outline.empty()) std::cout << "outline is empty" << std::endl;
+		IPoint outlineStart = outline.popFrontRet();
+
+		//find out which direction the edgeline goes
+
+		
+		bool done = false;
+		IPoint p1;
+		IPoint p2 = line.popFrontRet();
+		newline.pushBack(p2);
+		while(!done){ 
+			p1 = p2;
+			if (line.empty()){//the line should always cut the outline somewhere, otherwise the node in the outer GG lies inside the inner GG
+				std::cout << "found outer node inside cluster" << std::endl;
+				newline.clear();				
+				newline.pushBack(GG.getConnection(e->source(),e));
 				break;
 			}
+			IPoint p2 = line.popFrontRet();
+			IPoint q1;
+			IPoint q2 = outlineStart;						
+			forall_listiterators(IPoint,it2,outline){
+				q1 = q2;
+				q2 = *it2;
+				if (p1.m_x == p2.m_x){
+					if (q1.m_x == q2.m_x) continue;
+					int a = min(p1.m_y, p2.m_y);
+					int b = max(p1.m_y, p2.m_y);
+					if (a <= q1.m_y && q1.m_y <= b){
+						int c = min(q1.m_x, q2.m_x);
+						int d = max(q1.m_x, q2.m_x);
+						if (c <= p1.m_x && p1.m_x <= d){
+							done = true;
+							IPoint intersection = IPoint(p1.m_x,q1.m_y);
+							if (newline.back() != intersection) newline.pushBack(intersection);
+							//std::cout << " INTERSECTED OUTLINE AT " << newline.back() << std::endl;
+							//std::cout << "intersecting lines: " << p1 << "->" << p2 << "  " << q1 << "->" << q2 << std::endl;
+							break;
+						}
+					}
+				}else{
+					if (q1.m_y == q2.m_y) continue;
+					int a = min(p1.m_x, p2.m_x);
+					int b = max(p1.m_x, p2.m_x);
+					if (a <= q1.m_x && q1.m_x <= b){
+						int c = min(q1.m_y, q2.m_y);
+						int d = max(q1.m_y, q2.m_y);
+						if (c <= p1.m_y && p1.m_y <= d){
+							done = true;
+							IPoint intersection = IPoint(q1.m_x,p1.m_y);
+							if (newline.back() != intersection) newline.pushBack(intersection);
+							//std::cout << " INTERSECTED OUTLINE AT " << newline.back() << std::endl;
+							//std::cout << "intersecting lines: " << p1 << "->" << p2 << "  " << q1 << "->" << q2 << std::endl;
+							break;
+						}
+					}
+					
+				}
+			}
+
+			if (!done) newline.pushBack(p2);
+			//std::cout << "pushback " << p2 << std::endl;
 		}
-		moveToCluster(*nNode,v);
-		nodes.del(nNode);
+		//newline is now correc
+		std::cout << "newline " << e << " ";
+		forall_listiterators(IPoint, it, newline) std::cout << *it << "->";
+		std::cout << std::endl;
+		
+		GG.setPos(connect,newline.back());
+		if (newline.size() == 1){
+			GG.setPos(connect,newline.front());
+			GG.m_edgeline[e] = IPolyline();
+		}else{
+			//std::cout << "shortening edgeline of outer edge" << std::endl;			
+			GG.m_edgeline[e] = newline;
+			
+			//std::cout << "newline before translation: ";
+			//forall_listiterators(IPoint, it, newline) std::cout << *it << "->";
+			//std::cout << std::endl;
+		
+			newline = translate(newline,getPos(V));
+			//std::cout << "newline after translation:" << e << " ";
+			//forall_listiterators(IPoint, it, newline) std::cout << *it << "->";
+			//std::cout << std::endl;
+
+			//std::cout << "Full Edgeline: ";
+			//forall_listiterators(IPoint, it, m_edgeline[E]) std::cout << *it << "->";
+			//std::cout << std::endl;
+
+			if (newline.front() != m_edgeline[E].front()) m_edgeline[E].reverse();
+			while (newline.front() == m_edgeline[E].front()){
+				m_edgeline[E].popFront();
+				newline.popFront();
+			}
+			m_edgeline[E].pushFront(newline.front());
+
+			//std::cout << "Shortened Edgeline: ";
+			//forall_listiterators(IPoint, it, m_edgeline[E]) std::cout << *it << "->";
+			//std::cout << std::endl;
+
+		}
+		/*std::cout << "newline " << e << " ";
+		forall_listiterators(IPoint, it, m_edgeline[e]) std::cout << *it << "->";
+		std::cout << std::endl;	*/	
+		GG.addToLattice(e);
+		GG.addToGrid(e);
+	}// for all Outgoing
+}
+void GridGraph::clearLatticeGrid(List<node> nodes){
+	forall_listiterators(node,it,nodes){
+		node v = *it;
+		edge e;
+		forall_adj_edges(e,v){
+			//std::cout << "removing edge " << e << std::endl;
+			removeFromLattice(e);			
+			//removeFromGrid(e);
+		}		
+		removeFromLattice(v);
+		//removeFromGrid(v);
 	}
 }
+
+void GridGraph::moveToCluster(List<node> nodes, node V){
+	m_IOprep = false;
+	nodes = trimCluster(nodes,V);
+	List<edge> edges;
+	
+	forall_listiterators(node,it,nodes){
+		node v = *it;
+		edge e;
+		forall_adj_edges(e,v){
+			if (edges.search(e) == -1) edges.pushBack(e);
+		}
+	}
+	
+
+	if (subGG(V) == NULL) { // create a new subGG if needed		
+		m_vGridGraph[V] = new GridGraph(*m_pGraph, m_vOrig[V].front());		
+		if (m_lattice) subGG(V)->createLattice();
+		if (m_Grid) subGG(V)->createGrid();
+		//subGG(V)->displayDebug();
+	}else{
+		m_vGridGraph[V] = new GridGraph(*m_pGraph, *subGG(V));
+		if (m_lattice){ 
+			subGG(V)->createLattice();			
+		}
+		if (m_Grid) subGG(V)->createGrid();
+		//subGG(V)->displayDebug();
+	}
+	GridGraph &GG = *subGG(V);
+	
+
+	
+
+	NodeArray<node> vSrcCopy(GG,NULL);
+	NodeArray<node> vTrgCopy(*this,NULL);
+	EdgeArray<edge> eSrcCopy(GG,NULL);
+	EdgeArray<edge> eTrgCopy(*this,NULL);
+	List<node> addedNodes;
+	List<edge> addedEdges;
+	int offX = -m_x[V];
+	int offY = -m_y[V];
+	node first_node = GG.nonDummyNodes().front();
+	vSrcCopy[first_node] = V;
+	vTrgCopy[V] = first_node;
+	GG.m_vOutline[first_node] = translate(m_vOutline[V], IPoint(offX,offY));
+
+	
+	
+	clearLatticeGrid(nodes); //remove all adjedges and outlines of cluster from lattice and grid
+	nodes.del(nodes.get(nodes.search(V)));
+
+	//add all nodes to subGG(v)
+	m_vOrig[V].clear();
+	forall_listiterators(node,it,nodes){
+		node v = *it;
+		node w = GG.addNode();		
+		List<node> origNodes = m_vOrig[v]; //neccessary because m_vOrig[V] is emptied when conc'd
+		m_vOrig[V].conc(origNodes);
+		forall_listiterators(node,it2,m_vOrig[V]){
+			m_vCopy[*it2] = V;
+		}
+		addedNodes.pushBack(w);
+		vSrcCopy[w] = v;
+		vTrgCopy[v] = w;
+	}
+
+	//remove dummyNodes and ConnEdges and add edges;
+	List<edge> edgedel;
+	forall_listiterators(edge,it,GG.m_eOutgoing){
+		edge e = *it;		
+
+		if (GG.original(e).empty()) std::cout << "edge " << e << " has no original edges" << std::endl;
+		node vc = e->source();
+		node connect = e->target();
+		
+		//std::cout << "original edges in moveToClsuter for edge " << e->index() <<std::endl;
+		//forall_listiterators(edge, it ,GG.original(e)) std::cout << *it << std::endl; 
+		//std::cout << std::endl;
+
+		edge adjE = Copy(GG.original(e).front()); //e is not a new edge so srcCopy wont work
+		std::cout << adjE << std::endl;
+		node w = adjE->opposite(V);
+		node wc = vTrgCopy[w];
+		if (wc){ // a connection substituting a previously outgoing edge is formed
+			//if connect node is not at default position, add the part of the line inside prev cluster
+			edge f = GG.newEdge(vc,wc);
+			addedEdges.pushBack(f);
+			eSrcCopy[f] = adjE;
+			eTrgCopy[adjE] = f;
+			GG.m_edgeline[f] = translate(GG.m_edgeline[e],IPoint(offX,offY)); // connect line part;
+			GG.m_eSpaces[f] = GG.m_eSpaces[e];
+			//remember to update GGs Lattice and Grid in case outgoing edge has length > 0
+			GG.removeFromLattice(e);
+			GG.removeFromGrid(e);
+			edgedel.pushFront(e);
+		}else{
+			edges.del(edges.get(edges.search(adjE))); //the previously outgoing edge will stay outgoing and needs no further consideration
+			GG.setPos(connect, GG.getConnection(vc,e));
+		}
+			
+
+	}
+		while(!edgedel.empty()){ //delete edges/connect nodes here to not mess up the for loop
+		edge del = edgedel.popFrontRet();
+		edge e;
+		GG.m_eOutgoing.del(GG.m_eOutgoing.get(GG.m_eOutgoing.search(del)));
+		GG.m_vConnect.del(GG.m_vConnect.get(GG.m_vConnect.search(del->target())));
+		GG.delNode(del->target());
+	}
+
+	//add all edges and connect nodes to subGG(v)
+	forall_listiterators(edge,it,edges){		
+		edge e = (*it);
+		if (original(e).empty()) std::cout << "existing edge " << e << " has no original edges" << std::endl;
+		node sc = vTrgCopy[e->source()];
+		node tc = vTrgCopy[e->target()];
+		if (e->source() == V | e->target() == V) continue; //has been handled seperately in previous step
+		if (sc != NULL){
+			if (tc != NULL){
+				edge f = GG.newEdge(sc,tc);
+				GG.m_eOrig[f] = m_eOrig[e];
+				forall_listiterators(edge, it, GG.m_eOrig[f]){
+					GG.m_eCopy[*it] = f;
+				}
+				addedEdges.pushBack(f);
+				eSrcCopy[f] = e;
+				eTrgCopy[e] = f;
+			}else{
+				node dummy = GG.newNode();
+				edge f = GG.newEdge(sc,dummy);
+				GG.m_eOrig[f] = m_eOrig[e];
+				forall_listiterators(edge, it, GG.m_eOrig[f]){
+					GG.m_eCopy[*it] = f;
+				}
+				addedEdges.pushBack(f);
+
+				GG.m_vConnect.pushBack(dummy);
+				GG.m_eOutgoing.pushBack(f);
+				eSrcCopy[f] = e;
+				eTrgCopy[e] = f;
+			}
+		}else if(tc != NULL){
+			node dummy = GG.newNode();
+			edge f = GG.newEdge(tc,dummy);
+			GG.m_eOrig[f] = m_eOrig[e];
+			forall_listiterators(edge, it, GG.m_eOrig[f]){
+				GG.m_eCopy[*it] = f;
+			}
+			addedEdges.pushBack(f);
+
+			GG.m_vConnect.pushBack(dummy);
+			GG.m_eOutgoing.pushBack(f);
+			eSrcCopy[f] = e;
+			eTrgCopy[e] = f;
+		}
+		// both being NULL can't happen
+	}
+
+
+
+	//add Node specific data
+	forall_listiterators(node,it, addedNodes){
+		node c = *it;
+		node s = vSrcCopy[c];
+		GG.m_vOrig[c] = m_vOrig[s];
+		//std::cout << "copied orig nodes: " << std::endl << "m_vOrig[s]: ";
+		//forall_listiterators(node,it2,m_vOrig[s]) std::cout << *it2 << ";";
+		//std::cout << std::endl << "GG.m_vOrig[c]: ";
+		//forall_listiterators(node,it2,GG.m_vOrig[c]) std::cout << *it2 << ";";
+
+		forall_listiterators(node, it2, GG.m_vOrig[c]){
+
+			GG.m_vCopy[*it2] = c;			
+		}
+		GG.m_vGridGraph[c] = m_vGridGraph[s];
+		GG.m_x[c] = m_x[s] + offX;
+		GG.m_y[c] = m_y[s] + offY;
+		GG.m_vRotation[c] = m_vRotation[s];
+		GG.m_vXMirror[c] = m_vXMirror[s];
+		GG.m_vYMirror[c] = m_vYMirror[s];
+		GG.m_vOutline[c] = translate(m_vOutline[s], IPoint(offX,offY));
+	}
+
+	//add all Edge specific data
+	forall_listiterators(edge, it, edges){
+		edge se = *it;
+		edge te = eTrgCopy[se];
+		//std::cout << "copying data of " << se << " to " << te << std::endl;
+
+
+		if (GG.m_edgeline[te].empty()){
+			GG.m_edgeline[te] = translate(m_edgeline[se],IPoint(offX,offY));
+			GG.m_eSpaces[te] = m_eSpaces[se]; 
+		}else{ //te has previously been a real outgoing edge of the cluster V
+			GG.m_eSpaces[te] = m_eSpaces[se] - GG.m_eSpaces[te]; //it might be possible that this results in negative numbers, but it probably won't happen.
+			IPolyline &A = GG.m_edgeline[te];
+			IPolyline &B = m_edgeline[se];
+			if (A.back() == B.front()){
+				A.popBack();
+				A.conc(B);
+			}else if( A.front() == B.front()){
+				A.popFront();
+				forall_listiterators(IPoint,it2,B) A.pushFront(*it2);
+			}else if( A.front() == B.back()){
+				A.popFront();
+				A.concFront(B);
+			}else if( A.back() == B.back()){
+				A.popBack();
+				forall_rev_listiterators(IPoint,it2,B) A.pushBack(*it2);
+			}
+		} // connected the edgelines of outgoing edge in V / adj edge of V
+	}
+	
+	//std::cout << "INFORMATION SET" << std::endl;
+	//GG.displayDebug();
+	//enter new information into GGs Grid and Lattice (non-outgoing edges only
+	GG.addToLattice(first_node);
+	if (m_lattice) forall_listiterators(node, it, addedNodes){
+		GG.addToLattice(*it);
+		//GG.addToGrid(*it);
+	}
+	if (m_lattice) forall_listiterators(edge, it, edges){
+		edge se = *it;
+		edge te = eTrgCopy[se];
+		//if (GG.isDummy(te->target())) std::cout << "not ";
+		//std::cout << "adding to Lattice " << te << std::endl;
+		if (GG.isDummy(te->target())) continue; //will be processed separately
+		GG.addToLattice(te);
+		GG.addToGrid(te);
+	}
+	//std::cout << "entered all non_outgoing information to Lattice/Grid" << std::endl;
+
+	//recalc connection Node position / outgoing edgeslines (adding to Lattice and Grid) and
+	//truncate edges in this by edgeline of corresponding outgoing edge in GG, decrease m_eSpaces.
+	repairOutgoingLines(V);
+
+
+	//reroute edges
+	forall_listiterators(edge,it, GG.m_eOutgoing){
+		edge e = *it;
+		edge E = Copy(GG.original(e).front());
+		if (nodes.search(E->source()) != -1) moveSource(E,V); 
+		if (nodes.search(E->target()) != -1) moveTarget(E,V);
+	}
+
+	//remove all nodes in nodes
+	while(!nodes.empty()){
+		removeNode(nodes.popFrontRet());
+	}
+
+	//reInsert Outline and connecting edges in this GG'S Grid and Lattice
+	m_vOutline[V] = translate(subGG(V)->getOutline(),getPos(V));
+	addToLattice(V);
+	//addToGrid(V);
+	edge e;
+	if (m_lattice) forall_adj_edges(e,V){
+		addToLattice(e);
+		addToGrid(e);
+	}
+	
+
+	//this concludes moveToCluster
+	
+}
+
+void GridGraph::removeNode(node v){
+	m_nonDummy.del(m_nonDummy.get(m_nonDummy.search(v)));
+	forall_listiterators(node,it,m_vOrig[v]){
+		m_vCopy[*it] = NULL;
+	}
+	adjEntry adj;
+	forall_adj(adj,v){
+		edge e = adj->theEdge();
+		forall_listiterators(edge,it,m_eOrig[e]){
+			m_eCopy[*it] = NULL;
+		}
+	}
+	delNode(v);
+}
+
 List<node> GridGraph::trimCluster(List<node> U, node v) {
 	//pseudocode:
 	//Do DFS:
@@ -654,7 +1176,9 @@ node GridGraph::getConnectNode(edge e){
 		//std::cout << "getConnectNode " << v << std::endl;
 		return v;
 	}
-
+void GridGraph::latticeDebug(IPoint p){
+	m_lattice->nodeInfoOn(p);
+}
 void GridGraph::displayDebug(){
 	std::cout << std::endl << std::endl;
 	std::cout << "DEBUG INFORMATION FOR GRIDGRAPH #id: " << m_id << std::endl;
@@ -737,6 +1261,12 @@ node GridGraph::addInnerNode(node orig, node src){
 	return v;
 }
 
+node GridGraph::addNode(){ 
+	node v = this->newNode();
+	m_nonDummy.pushFront(v);
+	return v;
+
+}
 node GridGraph::addNode(node orig){ 
 	//displayDebug();
 
@@ -802,11 +1332,7 @@ edge GridGraph::addEdge(edge orig){
 
 void GridGraph::moveGGToCluster(node c, node v){ 
 	GridGraph &GGw = *subGG(c);
-/*	std::cout << "moving into " << v << "the following Cluster: " << std::endl;
-	GGw.displayDebug();
-	std::cout << "target Cluster: " << std::endl;*/	
 	GridGraph &GG = *subGG(v); //this will always work if this function is only called by moveToCluster(node w, node v);	
-	//GG.displayDebug();
 	List<node> nondummys = GGw.nonDummyNodes();
 	while(!nondummys.empty()){
 		ListIterator<node> itw;
@@ -828,7 +1354,6 @@ void GridGraph::moveGGToCluster(node c, node v){
 		}
 		if (!neighbor) while(true) std::cout << " oh no! "; //ERROR HANDLING LIKE A BOSS!
 		node w = *itw;		
-		//std::cout << "moving node " << w << std::endl;
 		GridGraph * p_srcGG = GGw.subGG(w); //pointer to w's subGG	
 		if (p_srcGG){ //if w is its own Cluster
 			//FixFlag: if w has its subCluster of GGw, move whole subcluster to GG!
@@ -855,53 +1380,30 @@ void GridGraph::moveGGToCluster(node c, node v){
 
 
 		}
-		//GG.displayDebug();
-
 		//Consider all adj edges of w
 		adjEntry adj;
 		List<edge> delEdges;
 		forall_adj(adj, w){ //note that only real edges to non-dummy nodes should be considered and all of them transferred to v
 			edge e = adj->theEdge(); //the adjacent edge
 			node n = adj->twinNode(); // the neighbor;
-			/*std::cout << "adj edge " << e << " neighbor "<< n << std::endl;*/
 			if(GGw.isDummy(n)){
-				//std::cout << "n is Dummy, will continue" << std::endl;				
-				//std::cout << "original of w is " << GGw.original(w).front();
-				//std::cout << "original of e is " << GGw.original(e).front();
-				//std::cout << "neighbor in orig is: " << GGw.original(e).front()->opposite(GGw.original(w).front());
-				//std::cout << "Copy in this is: " << Copy(GGw.original(e).front()->opposite(GGw.original(w).front()));
-
 				if (!(Copy(GGw.original(e).front()->opposite(GGw.original(w).front())) == v ) )	continue;					
-				//std::cout << "oops, dummy represents edge that connects to v, will not continue" << std::endl;
-				// i.e. even if n is dummy, if the edge in this connected at n goes to v, continue
 			}
 
 			delEdges.pushFront(e);
 			IPoint vPos = getPos(v); //relative to this-level GridGraph;
 			IPoint GGwPos = this->getPos(c); //relative to this-level GridGraph;
 			IPolyline e_edgeline = GGw.m_edgeline[e];			
-			//std::cout  << "copying edgeline ";
 			forall_nonconst_listiterators(IPoint, it, e_edgeline){
-				//std::cout << *it << "O";
-				//std::cout << ((*it).m_x +GGwPos.m_x) - getPos().m_x - vPos.m_x << ",";
-				//std::cout << ((*it).m_y +GGwPos.m_y) - getPos().m_y - vPos.m_y << " = ";	
 				(*it).m_x = ((*it).m_x +GGwPos.m_x) - vPos.m_x;
 				(*it).m_y = ((*it).m_y +GGwPos.m_y) - vPos.m_y;					
-				//std::cout << (*it) << " -> "; 
 				
 			}
-			//std::cout<<std::endl;
-			//GG.displayDebug();
-			//std::cout << "edge " << e << std::endl;
 			edge origedge = GGw.original(e).front();
-			//std::cout << "origedge " << origedge << std::endl;
 			edge GGedge = GG.Copy(origedge);
-			//std::cout << "GGedge " << GGedge << " id: " << GGedge->index() << std::endl;
 			GG.m_edgeline[GGedge] = e_edgeline; //this should adress the correct edge in  cluster v
-			GG.addToLattice(e_edgeline);
-			//forall_listiterators(edge,it,GGw.original(e)){ //delete reference to e from m_eCopy edgeArray;
-			//	GGw.m_eCopy[*it] = NULL;
-			//}
+			GG.addToLattice(GGedge);
+			
 			m_eCopy[GGw.original(e).front()] = NULL; //fixes the symptom, ignores the cause, could lead to trouble
 
 		}
@@ -909,20 +1411,7 @@ void GridGraph::moveGGToCluster(node c, node v){
 			GGw.delEdge(*it);
 		}
 
-		//int pos = GGw.m_nonDummy.search(w);
-		//std::cout << "w is " << w << std::endl;
-		/*if (pos == -1){
-			while(true){
-				std::cout << "THIS SHOULD NEVER HAPPEN: " << w << std::endl;
-				forall_listiterators(node,it,m_nonDummy){
-					std::cout << *it << std::endl;
-				}
-				std::cout << "POS: " << m_nonDummy.search(w) << std::endl;
-			}
-		}*/
-		//GGw.m_nonDummy.del(m_nonDummy.get(pos)); //no reason to delete + it might mess up the forall_nodes loop
-		//GGw.delNode(w);
-
+		//FixFlag: update *this lattice!
 		nondummys.del(itw);
 	}
 
@@ -934,9 +1423,9 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 
 
 	if (subGG(v) == NULL) { // create a new subGG if needed
-		GridGraph newGG = GridGraph(*m_pGraph, m_vOrig[v].front());		
-		m_GGList.pushFront(newGG);		
-		m_vGridGraph[v] = &m_GGList.front();		
+		//GridGraph newGG = GridGraph(*m_pGraph, m_vOrig[v].front());		
+		//m_GGList.pushFront(newGG);		
+		//m_vGridGraph[v] = &m_GGList.front();		
 		if (m_lattice) subGG(v)->createLattice();
 	}	
 
@@ -946,7 +1435,7 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 	GridGraph * p_srcGG = subGG(w); //pointer to w's subGG	
 	if (p_srcGG){ //if w is its own Cluster
 		moveGGToCluster(w, v);  //that doesn't mean I don't have to consider all adjacent edges of w!
-		m_GGList.del(m_GGList.get(m_GGList.search(*p_srcGG)));
+		//m_GGList.del(m_GGList.get(m_GGList.search(*p_srcGG)));
 	}else{ //if w is just a single node
 		node orig = original(w).front(); //works because w isn't a dummy node
 		node w2 = GG.addNode(orig); //the new node in cluster v (orig,copy,edge,connect taken care of by addNode)
@@ -981,8 +1470,9 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 				(*it).m_x -= vPos.m_x;
 				(*it).m_y -= vPos.m_y;
 			}
-			GG.m_edgeline[GG.Copy(original(e).front())] = e_edgeline; //this should adress the correct edge in  cluster v
-			GG.addToLattice(e_edgeline);
+			edge GGedge = GG.Copy(original(e).front());//this should adress the correct edge in  cluster v
+			GG.m_edgeline[GGedge] = e_edgeline; 
+			GG.addToLattice(GGedge);
 			//forall_listiterators(edge,it,original(e)){ //delete reference to e from m_eCopy edgeArray;
 			//	std::cout << "deleting reference in m_eCopy to " << *it << std::endl;
 			//	m_eCopy[*it] = NULL;
@@ -1024,7 +1514,7 @@ void GridGraph::moveToCluster(node w, node v){ // should be done I HOPE!!
 		}
 	}
 	m_nonDummy.del(m_nonDummy.get(pos));
-	
+
 	delNode(w);
 
 }; 			
@@ -1096,7 +1586,7 @@ edge GridGraph::contract(node v){
 	unsplit(v);
 	edge e = in;	
 	m_eSpaces[e] += out_eSpaces;
-	m_eOrig[e].conc(out_eOrig);
+	m_eOrig[e].conc(out_eOrig); //this keeps the ordering of front = source back=target of orig list
 
 	if (out_edgeline.empty()) return e;
 	if (m_edgeline[e].empty()){
@@ -1151,7 +1641,32 @@ void GridGraph::init(){};
 //{
 //	grid machen, 
 //};
-IPoint GridGraph::getConnection(edge e){return IPoint(0,0);};
+IPoint GridGraph::getConnection(edge e){
+	if (!isDummy(e->target())) std::cout << "=!=!=!=!=!= requestet Connection of Non-outgoing edge! =!=!=!=!=!=" << std::endl;
+	return getPos(e->target());
+};
+
+IPoint GridGraph::getConnection(node v, edge e){
+	//assuming that e is adjacent edge of v
+	if (subGG(v) == NULL) return getPos(v);
+	else{
+		if (v == e->source()){						
+			//std::cout << "original is "<< original(e).back() << std::endl;
+			//std::cout << "eCopy is "<< subGG(v)->Copy(original(e).back()) << std::endl;
+			IPoint conn = subGG(v)->getConnection(subGG(v)->Copy(original(e).front()));
+			IPoint pos = getPos(v);
+			std::cout << " returning " <<  IPoint(conn.m_x+pos.m_x, conn.m_y+pos.m_y)<< std::endl;
+			return IPoint(conn.m_x+pos.m_x, conn.m_y+pos.m_y);
+		}else{
+			if (v != e->target()) std::cout << "=!=!=!=!=!= requestet connection of edge e not connected to node v =!=!=!=!=!=" << std::endl;
+			std::cout << "original is "<< original(e).back() << std::endl;
+			std::cout << "eCopy is "<< subGG(v)->Copy(original(e).back()) << std::endl;
+			IPoint conn = subGG(v)->getConnection(subGG(v)->Copy(original(e).back()));
+			IPoint pos = getPos(v);
+			return IPoint(conn.m_x+pos.m_x, conn.m_y+pos.m_y);
+		}
+	}
+};
 
 void GridGraph::clusterize(){
 	int non2Nodes = 0;
@@ -1163,12 +1678,15 @@ void GridGraph::clusterize(){
 		if (non2Nodes > 16){			
 			int oldNoN;
 			oldNoN = this->numberOfNodes();		
+			std::cout << "calling clusterize with int 2" << std::endl;
 			clusterize(2);
+			std::cout << "called clusterize with int 2" << std::endl;
 			while (oldNoN != this->numberOfNodes()){
 				oldNoN = this->numberOfNodes();
 				clusterize(2);			
 			}
 		}else break;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return; //fixFlag: delete debug output
 
 		non2Nodes = 0;
 		forall_nodes(v,*this) if (v->degree() != 2) non2Nodes++;
@@ -1181,6 +1699,7 @@ void GridGraph::clusterize(){
 				clusterize(3);			
 			}
 		}else break;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return;
 
 		non2Nodes = 0;
 		forall_nodes(v,*this) if (v->degree() != 2) non2Nodes++;
@@ -1193,6 +1712,7 @@ void GridGraph::clusterize(){
 				clusterize(4);			
 			}
 		}else break;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return;
 
 		non2Nodes = 0;
 		forall_nodes(v,*this) if (v->degree() != 2) non2Nodes++;
@@ -1205,6 +1725,7 @@ void GridGraph::clusterize(){
 				clusterize(5);			
 			}
 		}else break;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return;
 
 		non2Nodes = 0;
 		forall_nodes(v,*this) if (v->degree() != 2) non2Nodes++;
@@ -1217,6 +1738,7 @@ void GridGraph::clusterize(){
 				clusterize(6);			
 			}
 		}else break;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return;
 
 		if (non2Nodes > 80){
 			int oldNoN;
@@ -1227,6 +1749,7 @@ void GridGraph::clusterize(){
 				clusterize(7);			
 			}
 		}else break;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return;
 
 		if (non2Nodes > 120){
 			int oldNoN;
@@ -1237,6 +1760,7 @@ void GridGraph::clusterize(){
 				clusterize(8);			
 			}
 		}else return;
+		if (m_lattice) if (m_lattice->outline().size() == 1) return;
 
 		std::cout << "der graph ist zu hässlich, SAGrid wird wahrscheinlich langsam sein oder nichts gutes finden" << std::endl;
 		break;
@@ -1246,15 +1770,21 @@ void GridGraph::clusterize(){
 	}*/
 	if (nonDummyNodes().size() == 1){
 		eviscerate(nonDummyNodes().front());
-	}
+	}/*
+	std::cout << "FINISHED CLUSTERIZATION!!!!!!!!!!!!!!!!!!   CONTINUING ON SUBCLUSTERS!" << std::endl;
+	std::cout << "GG STARTED WITH " << AllNodes << std::endl;
+	std::cout << "GG HAS NOEW" << numberOfNodes() << std::endl;*/
+
 	//displayDebug();
 	if (AllNodes != numberOfNodes()){
 		std:cout << AllNodes << " became " << numberOfNodes() << std::endl;
 		forall_nodes(v,*this){
 			if (subGG(v)) {
+				//std::cout << "CLUSTERIZING SUBCLUSTER!!" << std::endl;
 				//std::cout << "calling clusterize on GridGraph #" << subGG(v)->id() << std::endl;
 				//subGG(v)->displayDebug();
 				subGG(v)->clusterize();
+				//std::cout << "DONE CLUSTERIZING SUBCLUSTER!!" << std::endl;
 				//std::cout << "GridGraph id#" << subGG(v)->id() << " done" << std::endl;
 				//subGG(v)->displayDebug();
 				//std::cout << "pause" << std::endl;
@@ -1264,6 +1794,7 @@ void GridGraph::clusterize(){
 }
 
 void GridGraph::clusterize(int p){	
+	//std::cout << "starting clusterize with int " << p << std::endl;
 	List<node> nodes;
 	this->allNodes(nodes);
 	forall_listiterators(node,it,nodes){
@@ -1275,9 +1806,13 @@ void GridGraph::clusterize(int p){
 			if (degree > 2){
 				//std::cout << "Calling findcluster on " << v << std::endl;
 				findCluster(v,p);
+				//std::cout << "done calling findcluster on " << v << std::endl;
+
+				if (m_lattice) if (m_lattice->outline().size() == 1) return;
 			}
 		}
 	}
+	//std::cout << "finished clusterize with int " << p << std::endl;
 };
 
 
@@ -1291,6 +1826,7 @@ bool GridGraph::isDummy(node v){ //note: if you mess up and v is not even of thi
 void GridGraph::eviscerate(node v){ //fixFlag: allow evisceration of subGGs without breaking them up!
 	//std::cout << "GRIDGRAPH GG#" << id() << " BEFORE EVISCERATION:";
 	//displayDebug();
+	std::cout << "EVISCERATION BREAKS EVERYTHING!!!!!!!!!!!!!!!!!!!" << std::endl;
 	m_IOprep = false;
 	if (subGG(v) == NULL) return;
 	GridGraph &GG = *subGG(v);
@@ -1351,20 +1887,35 @@ void GridGraph::eviscerate(node v){ //fixFlag: allow evisceration of subGGs with
 		edgeline(Copy(origEdge)) = origLine;
 	}
 	m_nonDummy.del(m_nonDummy.get(m_nonDummy.search(v)));
-	m_GGList.del(m_GGList.get(m_GGList.search(*subGG(v))));
+	//m_GGList.del(m_GGList.get(m_GGList.search(*subGG(v))));
 	m_vGridGraph[v] = NULL;
 	delNode(v); 
 	
 }
 
 void GridGraph::fillLattice(){
+	node v;
+	forall_nodes(v,*this){
+		if(subGG(v)){
+			subGG(v)->createLattice();
+			subGG(v)->fillLattice();
+			m_vOutline[v] = translate(subGG(v)->getOutline(),getPos(v));
+
+
+		}
+	}
 	edge e;
 	forall_edges(e,*this){
-		addToLattice(m_edgeline[e]);
+		addToLattice(e);
 	}
-	forall_nonconst_listiterators(GridGraph,it,m_GGList){ //fixFlag: iterate over all nodes and translate outline over node position.
-		addToLattice((*it).getOutline());
+	
+	forall_nodes(v,*this){
+		if (subGG(v)) {		
+			//std::cout << "filling to lattice node " << v << std::endl;
+			addToLattice(v);
+		}
 	}
+
 }
 
 void GridGraph::fillGrid(){

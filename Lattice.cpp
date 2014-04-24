@@ -2,21 +2,44 @@
 
 #include <Lattice.h>
 
+unsigned int Lattice::instanceCount = 1;
 
 Lattice::Lattice(){
-	//std::cout << "CREATED LATTICE!" << std::endl;
+	std::cout << "CREATED BROKEN LATTICE!" << std::endl;
 	nodePos.init(*this,IPoint(-1,-1));
 	height.init(*this,-1);
 	start.init(*this,-1);
 	end.init(*this,-1);
+	srcN.init(*this,NULL);
+	srcE.init(*this,NULL);
+}
+Lattice::Lattice(Graph &G){
+	m_id = instanceCount++;
+	std::cout << "CREATED LATTICE NR " << id()  << std::endl;
+
+	displayLatticeInformation();
+	nodePos.init(*this,IPoint(-1,-1));
+	height.init(*this,-1);
+	start.init(*this,-1);
+	end.init(*this,-1);
+	srcN.init(*this,NULL);
+	srcE.init(*this,NULL);
+	lineN.init(G);
+	lineE.init(G);
 }
 
 Lattice::Lattice(const Lattice &L){
+	m_id = instanceCount++;
+	std::cout << "COPIED LATTICE NR " << L.id() << "AS LATTICE NR " << id() << std::endl;
 	//std::cout << "COPIED LATTICE WITH " << L.numberOfNodes() << " NODES!" << std::endl;
 	nodePos.init(*this,IPoint(-1,-1));
 	height.init(*this,-1);
 	start.init(*this,-1);
 	end.init(*this,-1);
+	srcN.init(*this,NULL);
+	srcE.init(*this,NULL);
+	lineN.init(*L.lineN.graphOf());
+	lineE.init(*L.lineE.graphOf());
 	
 	node v;
 	NodeArray<node> srcCopy(*this,NULL);
@@ -43,6 +66,10 @@ Lattice& Lattice::operator=(const Lattice &L){
 	height.init(*this,-1);
 	start.init(*this,-1);
 	end.init(*this,-1);
+	srcN.init(*this,NULL);
+	srcE.init(*this,NULL);
+	lineN.init(*L.lineN.graphOf());
+	lineE.init(*L.lineE.graphOf());
 	
 	node v;
 	NodeArray<node> srcCopy(*this,NULL);
@@ -258,10 +285,10 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 			forall_listiterators(edge, it, hor){
 				//std::cout << "edges: " << (*it)->index() << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
-				if (height[*it] > a){
+				if (height[*it] >= a){
 					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] < pos && end[*it] > pos){
+					if (start[*it] <= pos && end[*it] >= pos){
 						//std::cout << hor.pos(it) << " CROSSING FOUND A " << (*it)->index() << std::endl;
 						crossings.pushFront(*it);
 					}
@@ -273,10 +300,10 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 			forall_listiterators(edge, it, hor){
 				//std::cout << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
-				if (height[*it] > a){
+				if (height[*it] >= a){
 					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] < pos && end[*it] > pos){
+					if (start[*it] <= pos && end[*it] >= pos){
 						
 						//std::cout << hor.pos(it) << " CROSSING FOUND B " << (*it)->index() << std::endl;
 						crossings.pushBack(*it);
@@ -293,10 +320,10 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 
 			forall_listiterators(edge, it, vert){
-				if (height[*it] > a){
+				if (height[*it] >= a){
 					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] < pos && end[*it] > pos){
+					if (start[*it] <= pos && end[*it] >= pos){
 						//std::cout << vert.pos(it) << " CROSSING FOUND C " << (*it)->index() << std::endl;
 						crossings.pushFront(*it);
 					}
@@ -308,10 +335,10 @@ List<edge> Lattice::edges(IPoint p1, IPoint p2){
 			//std::cout << "searching h: "<< pos <<" in range (" << a << "," << b << ")" << std::endl;
 			forall_listiterators(edge, it, vert){
 				//std::cout << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
-				if (height[*it] > a){
+				if (height[*it] >= a){
 					//std::cout << "!" << *it << " h: " << height[*it] << ": [" << start[*it] << ":" << end[*it] << "]" << std::endl;
 					if (height[*it] > b) break;
-					if (start[*it] < pos && end[*it] > pos){
+					if (start[*it] <= pos && end[*it] >= pos){
 						//std::cout << vert.pos(it) << " CROSSING FOUND D " << (*it)->index() << std::endl;
 						crossings.pushBack(*it);
 					}
@@ -343,67 +370,94 @@ node Lattice::splitEdge(edge e, int pos){
 	node v2 = e->target();	
 	IPoint p1 = nodePos[v1];
 	IPoint p2 = nodePos[v2];
-	//std::cout << "  splitting edge " << e->index() << ": " << p1 << "->" << p2 << std::endl;
+	edge sE = srcE[e];
+	node sN = srcN[e];
+	//std::cout << "  splitting edge " << e->index() << ": " << p1 << "->" << p2 << " at pos " << pos << std::endl;
+	//if (sN) std::cout << "SPLITTING NODE BORDER OF " << sN << std::endl;
 	
+	if (start[e] == pos | end[e] == pos){
+		if (p1.m_y == p2.m_y){
+			if(p1.m_x == pos) return v1;
+			else return v2;
+		}
+		if (p1.m_x == p2.m_x){
+			if(p1.m_y == pos) return v1;
+			else return v2;
+		}
+	}
+	
+
 	
 	node newV = newNode();	
 	int a = getHeight(p1,p2);
 	if (p1.m_y == p2.m_y) nodePos[newV] = IPoint(pos, a);
 	if (p1.m_x == p2.m_x) nodePos[newV] = IPoint(a,pos);
 
-	//std::cout << "created Node " << newV << std::endl;
-	edge e1 = connect(v1,newV);	
+	edge e1 = connect(v1,newV);		
 	sortIn(e1);
-	//std::cout << "created edge " << e1->index() << std::endl;
 	edge e2 = connect(newV,v2);
 	sortIn(e2);
-	//std::cout << "created edge " << e2->index() << std::endl;
 	edge e3 = connect(v2,newV);
-	//std::cout << "created edge " << e3->index() << std::endl;
 	edge e4 = connect(newV,v1);
-	//std::cout << "created edge " << e4->index() << std::endl;
-	
-	//height[e1] = a;
-	//height[e2] = a;	
-	//height[e3] = a;
-	//height[e4] = a;
+	if (sE){
+		srcE[e1] = sE;
+		lineE[sE].pushBack(e1);
+		srcE[e2] = sE;
+		lineE[sE].pushBack(e2);
+		srcE[e3] = sE;
+		lineE[sE].pushBack(e3);
+		srcE[e4] = sE;
+		lineE[sE].pushBack(e4);
+	}
+	if (sN){
+		srcN[e1] = sN;
+		lineN[sN].pushBack(e1);
+		srcN[e2] = sN;
+		lineN[sN].pushBack(e2);
+		srcN[e3] = sN;
+		lineN[sN].pushBack(e3);
+		srcN[e4] = sN;
+		lineN[sN].pushBack(e4);
+	}
+
+
 
 	if (p1.m_y == p2.m_y){ //edge is horizontal
 		//std::cout << "splitting horizontal edge" << std::endl;
 		ListIterator<edge> ite = hor.get(hor.search(e));
-		nodePos[newV] = IPoint(pos, a);
-		//if (ite.valid()) //std::cout << "valid" << std::endl;
-		//else //std::cout << "invalid" << std::endl;
-		OGDF_ASSERT(ite.valid());
-		/*hor.insertAfter(e1, ite);
-		hor.insertAfter(e2, ite);*/
+		nodePos[newV] = IPoint(pos, a);		
+		OGDF_ASSERT(ite.valid());		
 		hor.del(ite);		
 	}
-	if (p1.m_x == p2.m_x){ //edges are vertical
-		//std::cout << "splitting vertical edge" << std::endl;
+	if (p1.m_x == p2.m_x){ //edges are vertical		
 		ListIterator<edge> ite = vert.get(vert.search(e));
-		nodePos[newV] = IPoint(a,pos);
-		//if (ite.valid()) //std::cout << "valid" << std::endl;
-		//else //std::cout << "invalid" << std::endl;
-		OGDF_ASSERT(ite.valid());
-		/*vert.insertAfter(e1, ite);
-		vert.insertAfter(e2, ite);*/
+		nodePos[newV] = IPoint(a,pos);		
+		OGDF_ASSERT(ite.valid());		
 		vert.del(ite);
+	}	
+	int lpos;
+	if (sE) {
+		lpos = lineE[sE].search(e);
+		if (lpos != -1) lineE[sE].del(lineE[sE].get(lpos));
 	}
-	//std::cout << "crossNode#" << newV << ": " << nodePos[newV] << std::endl;
-	//std::cout << "deleting edge " << e << std::endl;
+	if (sN){
+		lpos = lineN[sN].search(e);	
+		if (lpos != -1) lineN[sN].del(lineN[sN].get(lpos));
+	}
 	delEdge(e);
+
 	edge e_alt = this->searchEdge(v2,v1);
-	//std::cout << "deleting edge " << e_alt << std::endl;
+	if (sE){
+		lpos = lineE[sE].search(e_alt);
+		if (lpos != -1)  lineE[sE].del(lineE[sE].get(lpos));
+	}
+	if (sN) {
+		lpos = lineN[sN].search(e_alt);
+		if (lpos != -1)lineN[sN].del(lineN[sN].get(lpos));
+	}
+
 	delEdge(e_alt);
-	//adjSort(e1->adjSource());
-	//adjSort(e2->adjSource());
-	//adjSort(e3->adjSource());
-	//adjSort(e4->adjSource());
-	//adjSort(e1->adjTarget());
-	//adjSort(e2->adjTarget());
-	//adjSort(e3->adjTarget());
-	//adjSort(e4->adjTarget());
+
 	return newV;
 }
 
@@ -550,47 +604,544 @@ void Lattice::merge(node v1, node v2){
 
 }
 
-void Lattice::addLine(IPolyline line) {
+void Lattice::addLine(IPolyline line, edge E) {
+	//std::cout << "adding lines of " << E << std::endl;
 	if (line.empty()) return;
-	/*std::cout << "adding line : ";
-	forall_listiterators(IPoint, it, line) std::cout << *it << "->";
+	//std::cout << "adding line:" << std::endl;
+	//forall_listiterators(IPoint,it,line) std::cout << *it << "->";
+	//std::cout << std::endl;
+	IPoint p1;
+	IPoint p2 = line.popFrontRet();
+	ListIterator<IPoint> it;	
+	forall_listiterators(IPoint, it, line){
+		p1 = p2;
+		p2 = *it;
+		int h = getHeight(p1,p2);
+
+		//node vSrc = getNode(p1);				
+		List<edge> crossings = edges(p1, p2);
+		if (crossings.empty()){
+			node v1 = getNode(p1);
+			node v2 = getNode(p2);
+			edge e = connect(v1,v2);
+			srcE[e] = E;
+			lineE[E].pushBack(e); 
+			sortIn(e);
+			e = connect(v2,v1);
+			srcE[e] = E;
+			lineE[E].pushBack(e);
+		}else{
+			edge cross = crossings.popFrontRet();
+			int prevH = height[cross];
+
+			node v2 = splitEdge(cross,h);		
+			node v1 = getNode(p1);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcE[e] = E;
+				lineE[E].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcE[e] = E;
+				lineE[E].pushBack(e);
+			}									
+			while(!crossings.empty()){	
+				edge cross = crossings.popFrontRet();
+				if (height[cross] == prevH) continue;
+				prevH = height[cross];
+				v1 = v2;
+				v2 = splitEdge(cross,h);			
+				edge e = connect(v1,v2);
+				srcE[e] = E;			
+				lineE[E].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcE[e] = E;			
+				lineE[E].pushBack(e);			
+			}
+			v1 = v2;
+			v2 = getNode(p2);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcE[e] = E;
+				lineE[E].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcE[e] = E;
+				lineE[E].pushBack(e);
+			}	
+		}
+	}
+	/*std::cout << "Added lineE[" << E->index() << "] : ";
+	forall_listiterators(edge,it,lineE[E]) std::cout << (*it)->index() << ", ";
+	std::cout << std::endl;
+	forall_listiterators(edge,it,lineE[E]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << ";";
 	std::cout << std::endl;*/
+	//std::cout << "recalc ...";
+	//std::cout << "added Eline ";
+	//forall_listiterators(edge,it,lineE[E]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << ";";
+	//std::cout << std::endl;
+	checkConsistency();
+	m_pOutline = CalcOutline();
+	//std::cout << "done" << std::endl;
+};
+
+void Lattice::addLine(IPolyline line, edge E, List<edge> &EList) {
+		if (line.empty()) return;
+	//std::cout << "adding line:" << std::endl;
+	//forall_listiterators(IPoint,it,line) std::cout << *it << "->";
+	//std::cout << std::endl;
+	EList.clear();
+	IPoint p1;
+	IPoint p2 = line.popFrontRet();
+	ListIterator<IPoint> it;	
+	forall_listiterators(IPoint, it, line){
+		p1 = p2;
+		p2 = *it;
+		int h = getHeight(p1,p2);
+
+		//node vSrc = getNode(p1);				
+		List<edge> crossings = edges(p1, p2);
+
+		if (crossings.empty()){
+			node v1 = getNode(p1);
+			node v2 = getNode(p2);
+			edge e = connect(v1,v2);
+			srcE[e] = E;
+			lineE[E].pushBack(e); 
+			sortIn(e);
+			e = connect(v2,v1);
+			srcE[e] = E;
+			lineE[E].pushBack(e);
+		}else{
+
+			edge cross = crossings.popFrontRet();
+			int prevH = height[cross];
+
+			node v2 = splitEdge(cross,h);		
+			node v1 = getNode(p1);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcE[e] = E;
+				lineE[E].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcE[e] = E;
+				lineE[E].pushBack(e);
+			}									
+			while(!crossings.empty()){	
+				edge cross = crossings.popFrontRet();
+				if (height[cross] == prevH) continue;
+
+				edge srce = srcE[cross];
+				if (srce != NULL) if (EList.search(srce) == -1) EList.pushBack(srce);
+
+				prevH = height[cross];
+				v1 = v2;
+				v2 = splitEdge(cross,h);			
+				edge e = connect(v1,v2);
+				srcE[e] = E;			
+				lineE[E].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcE[e] = E;			
+				lineE[E].pushBack(e);			
+			}
+			v1 = v2;
+			v2 = getNode(p2);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcE[e] = E;
+				lineE[E].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcE[e] = E;
+				lineE[E].pushBack(e);
+			}	
+		}
+	}
+	/*std::cout << "Added lineE[" << E->index() << "] : ";
+	forall_listiterators(edge,it,lineE[E]) std::cout << (*it)->index() << ", ";
+	std::cout << std::endl;
+	forall_listiterators(edge,it,lineE[E]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << ";";
+	std::cout << std::endl;*/
+	//std::cout << "recalc ...";
+	//std::cout << "added Eline ";
+	//forall_listiterators(edge,it,lineE[E]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << ";";
+	//std::cout << std::endl;
+	checkConsistency();
+
+	m_pOutline = CalcOutline();
+	//std::cout << "done" << std::endl;
+};
+
+bool Lattice::addLine(IPolyline line, node N, List<edge> &Elist) {
+	
+	if (line.empty()) return true;
+	if (!lineN[N].empty()) while (true) std::cout << N << " already registered in Lattice!";
+	bool legal = true;
+	Elist.clear();
+	List<edge> singles;
 	IPoint p1;
 	IPoint p2 = line.popFrontRet();
 	ListIterator<IPoint> it;	
 		forall_listiterators(IPoint, it, line){
 		p1 = p2;
 		p2 = *it;
-		//std::cout << "p1 " << p1 << " p2 " << p2 << std::endl;
-		int height = getHeight(p1,p2);
-		//std::cout << "height " << height << std::endl;
-		node vSrc = getNode(p1);
-		//std::cout << "vSrc :" << vSrc << std::endl;
-		node vTrg = getNode(p2);		
+		int h = getHeight(p1,p2);
+		int a = 0; int b = 0;
+		if (p1.m_x == p2.m_x)
+			a = p1.m_y; b = p2.m_y;
+		if (p1.m_y == p2.m_y)
+			a = p1.m_x; b = p2.m_x;
+		
+
 		List<edge> crossings = edges(p1, p2);
-		bool debug = false;
-		debug = (!crossings.empty());
-		//ListIterator<edge> ite = crossings.begin(); // I hope this does what I think it does ADDENDUM: IT DOESN'T!!
-		//if (debug) std::cout << ite.valid() << " ()() " << ite.succ().valid() << std::endl;
-		node v1 = vSrc;
-		node v2;
-		forall_listiterators(edge,ite,crossings){	
-			v2 = splitEdge(*ite,height);			
+		if (crossings.empty()){
+			node v1 = getNode(p1);
+			node v2 = getNode(p2);
 			edge e = connect(v1,v2);
+			srcN[e] = N;
+			lineN[N].pushBack(e); 
 			sortIn(e);
-			connect(v2,v1);
+			e = connect(v2,v1);
+			srcN[e] = N;
+			lineN[N].pushBack(e);
+		}else{
+			edge cross = crossings.popFrontRet();
+			int prevH = height[cross];
+
+			node v2 = splitEdge(cross,h);		
+			node v1 = getNode(p1);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcN[e] = N;
+				lineN[N].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcN[e] = N;
+				lineN[N].pushBack(e);
+			}									
+			while(!crossings.empty()){	
+				edge cross = crossings.popFrontRet();
+				if (height[cross] == prevH) continue;
+				prevH = height[cross];
+				
+				edge srce = srcE[cross];			
+
+				if (height[cross] != a && height[cross] != b){ //this makes sure that a starting- or endpoint is not registered as a crossing
+					if (srcN[cross] != NULL && srcN[cross] != N) {						
+					//removeLine(N);
+					//return false;
+						legal = false;
+				}	
+					if (Elist.search(srce) == -1) Elist.pushBack(srce);
+					else{
+						int listpos = singles.search(srce);
+						if (listpos == -1) singles.pushBack(srce);
+						else singles.del(singles.get(listpos));
+					}
+				}
+
+
+				v1 = v2;
+				v2 = splitEdge(cross,h);			
+				edge e = connect(v1,v2);
+				srcN[e] = N;			
+				lineN[N].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcN[e] = N;			
+				lineN[N].pushBack(e);			
+			} //while ! crossings.empty
+
 			v1 = v2;
+			v2 = getNode(p2);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcN[e] = N;
+				lineN[N].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcN[e] = N;
+				lineN[N].pushBack(e);
+			}	
 		}
-		v2 = vTrg;
-		edge e = connect(v1,v2);
-		sortIn(e);
-		connect(v2,v1);
+	}
+	//std::cout << "added Nline ";
+	//forall_listiterators(edge,it,lineN[N]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << ";";
+	//std::cout << std::endl;
+	checkConsistency();
+
+	if (!singles.empty()){
+		legal = false;
+	}
+	m_pOutline = CalcOutline();	
+	return legal;
+	
+};
+void Lattice::displayLatticeInformation(){
+	std::cout << "info Lattice Nr " << id() << std::endl;
+	std::cout << "number of Nodes " << numberOfNodes() << std::endl;
+	std::cout << "number of Edges " << numberOfEdges() << std::endl;
+	checkConsistency();
+}
+void Lattice::checkConsistency(){
+	//no double-nodes:
+	//std::cout << "checking consistency of lattice " << id() << std::endl;
+	node v,w;
+	edge e;
+	forall_edges(e,*this){
+		edge f;
+		node v1 = e->source();
+		node v2 = e->target();
+		forall_edges(f,*this){
+			if (f->index() != e->index()){
+			if (f->source() == e->source() && f->target() == e->target()){
+				std::cout << id() <<" "<< "double edge ";
+				std::cout << e->index() << "  " << nodePos[v1] << e << nodePos[v2] << " sE "<< srcE[e] << " sN "<< srcN[e] << std::endl;
+				std::cout << "";
+			}
+			}
+		}
+	}
+	forall_nodes(v,*this){
+		List<edge> sE;
+		List<node> sN;
+		edge e;
+		forall_adj_edges(e,v){
+			edge srE = srcE[e];
+			node srN = srcN[e];
+			if (srE){ 
+				if (sE.search(srE) == -1) sE.pushFront(srE);
+				else sE.del(sE.get(sE.search(srE)));
+			}
+			if (srN){ 
+				if (sN.search(srN) == -1) sN.pushFront(srN);
+				else sN.del(sN.get(sN.search(srN)));
+			}
+		}
+		forall_listiterators(edge,it,sE){
+			std::cout << id() <<" "<< "faulty edgeline " << *it << " at " << nodePos[v] << ":"<< std::endl;
+			displayNodeInformation(v);
+			if (lineE[*it].empty()){
+				std::cout << id() <<" "<< "edges registered but not ins list:" << std::endl;
+				edge f;
+				forall_edges(f, *this){
+					if (srcE[f] == *it){
+						std::cout << f << ":  " << nodePos[f->source()] << "->" << nodePos[f->target()] << std::endl;
+					}
+				}
+			}
+			forall_listiterators(edge,it2,lineE[*it]){
+				edge f = *it2;
+				//std::cout << f << std::endl;
+				std::cout << nodePos[(*it2)->source()] << "->" << nodePos[(*it2)->target()] << std::endl;
+			}
+		}
+		forall_listiterators(node,it,sN){
+			std::cout << id() <<" "<< "faulty nodeline " << *it << " at " << nodePos[v] << ":"<< std::endl;
+			if (lineN[*it].empty()){
+				std::cout << id() <<" "<< "edges registered but not ins list:" << std::endl;
+				edge f;
+				forall_edges(f, *this){
+					if (srcN[f] == *it){
+						std::cout << f << ":  " << nodePos[f->source()] << "->" << nodePos[f->target()] << std::endl;
+					}
+				}
+			}
+			forall_listiterators(edge,it2,lineN[*it]){
+				edge f = *it2;
+				std::cout << nodePos[(*it2)->source()] << "->" << nodePos[(*it2)->target()] << std::endl;
+			}
+		}
+
+		forall_nodes(w,*this){
+			if (w != v){
+				if (nodePos[w] == nodePos[v]){
+					std::cout << id() <<" " << "nodes " << v << " and " << w << " share location " << nodePos[w] << std::endl;
+					std::cout << "";
+				}
+			}
+		}
+		forall_edges(e,*this){
+			IPoint p1 = nodePos[e->source()];
+			IPoint p2 = nodePos[e->target()];
+			IPoint q = nodePos[v];
+			if (p1.m_y == p2.m_y){
+				int a = min(p1.m_x, p2.m_x);
+				int b = max(p1.m_x, p2.m_x);
+				if (q.m_y == p1.m_y && a < q.m_x && q.m_x < b){
+					std::cout << id() <<" " << "node " << v << " touches edges " << p1 << "->" << p2 << " of srcE: " << srcE[e] << " srcN: " << srcN[e] << std::endl;
+					std::cout << "";
+				}
+			}
+			if (p1.m_x == p2.m_x){
+				int a = min(p1.m_y, p2.m_y);
+				int b = max(p1.m_y, p2.m_y);
+				if (q.m_x == p1.m_x && a < q.m_y && q.m_y < b){
+					std::cout << id() <<" " << "node " << v << " touches edges " << p1 << "->" << p2 << " of srcE: " << srcE[e] << " srcN: " << srcN[e] << std::endl;
+					std::cout << "";
+				}
+			}
+		}
+	}	
+	forall_edges(e,*this){
+		if (e->source() == e->target()){
+			std::cout << id() <<" "<< "edge " << e->index() << " loops on node " << e->source() << " at location " << nodePos[e->source()] << std::endl;
+			std::cout << "";
+		}
+		if (srcN[e] == NULL && srcE[e] == NULL){
+			std::cout << id() <<" "<< "edge " << e->index() << ": " << nodePos[e->source()] << "->" << nodePos[e->target()] << "is not connected to src Noder or Edge " << std::endl;
+			std::cout << "";
+		}
 
 	}
-	//std::cout << "recalc ...";
-	m_pOutline = CalcOutline();
-	//std::cout << "done" << std::endl;
+
+}
+
+bool Lattice::addLine(IPolyline line, node N) {
+	//std::cout << "started addLine N" << std::endl;	
+	if (line.empty()) return true;
+	std::cout << "adding to lattice Node " << N << std::endl;
+	if (!lineN[N].empty()) {std::cout << N << " already registered in Lattice!"; throw -1;}
+	bool legal;
+	List<edge> Elist;
+	List<edge> singles;
+	IPoint p1;
+	IPoint p2 = line.popFrontRet();
+	ListIterator<IPoint> it;	
+		forall_listiterators(IPoint, it, line){
+		p1 = p2;
+		p2 = *it;
+		int h = getHeight(p1,p2);
+		int a = 0; int b = 0;
+		if (p1.m_x == p2.m_x)
+			a = p1.m_y; b = p2.m_y;
+		if (p1.m_y == p2.m_y)
+			a = p1.m_x; b = p2.m_x;
+		//std::cout << "getting Crossings" << std::endl;
+		List<edge> crossings = edges(p1, p2);
+		if (crossings.empty()){
+			node v1 = getNode(p1);
+			node v2 = getNode(p2);
+			edge e = connect(v1,v2);
+			srcN[e] = N;
+			lineN[N].pushBack(e); 
+			sortIn(e);
+			e = connect(v2,v1);
+			srcN[e] = N;
+			lineN[N].pushBack(e);
+		}else{
+
+			edge cross = crossings.popFrontRet();
+			int prevH = height[cross];
+
+			node v2 = splitEdge(cross,h);		
+			node v1 = getNode(p1);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcN[e] = N;
+				lineN[N].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcN[e] = N;
+				lineN[N].pushBack(e);
+			}									
+			while(!crossings.empty()){	
+				edge cross = crossings.popFrontRet();
+				if (height[cross] == prevH) continue;
+				prevH = height[cross];
+
+				edge srce = srcE[cross];			
+
+				if (height[cross] != a && height[cross] != b){ //this makes sure that a starting- or endpoint is not registered as a crossing
+					if (srcN[cross] != NULL){						
+						if (srcN[cross] != N) legal = false;
+					}else{
+						if (Elist.search(srce) == -1) Elist.pushBack(srce);
+						else{
+							int listpos = singles.search(srce);
+							if (listpos == -1) singles.pushBack(srce);
+							else singles.del(singles.get(listpos));
+						}
+					}
+				}
+
+
+				v1 = v2;
+				v2 = splitEdge(cross,h);			
+				edge e = connect(v1,v2);
+				srcN[e] = N;			
+				lineN[N].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcN[e] = N;			
+				lineN[N].pushBack(e);			
+			} //while ! crossings.empty
+
+			v1 = v2;
+			v2 = getNode(p2);
+			if (v1 != v2){
+				edge e = connect(v1,v2);
+				srcN[e] = N;
+				lineN[N].pushBack(e); 
+				sortIn(e);
+				e = connect(v2,v1);
+				srcN[e] = N;
+				lineN[N].pushBack(e);
+			}	
+		}
+	}
+	//std::cout << "added Nline ";
+	//forall_listiterators(edge,it,lineN[N]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << ";";
+	//std::cout << std::endl;
+	checkConsistency();
+	//std::cout << "checked consistency" << std::endl;
+
+	if (!singles.empty()){
+		legal = false;
+	}
+	m_pOutline = CalcOutline();	
+	return legal;
 };
+
+List<edge> Lattice::edgesOn(IPoint p){
+	int x = p.m_x;
+	int y = p.m_y;
+	List<edge> edges;
+	forall_listiterators(edge,it,hor){
+		edge e = *it;
+		if (height[e] > y) break;
+		if (height[e] == y && start[e] < x && x < end[e]) edges.pushBack(srcE[e]);					
+	}
+	forall_listiterators(edge,it,vert){
+		edge e = *it;
+		if (height[e] > x) break;
+		if (height[e] == x && start[e] < y && y < end[e]) edges.pushBack(srcE[e]);					
+	}
+
+}
+
+node Lattice::clusterOn(IPoint p){
+	int x = p.m_x;
+	int y = p.m_y;
+	edge above = NULL;
+	edge below = NULL;;
+	forall_listiterators(edge,it,hor){
+		edge e = *it;
+		if (height[e] <= y && start[e] < x && x < end[e]) above = e;	
+		if (height[e] >= y && start[e] < x && x < end[e]) {below = e; break;}
+	}
+	node a = NULL;
+	node b = NULL;
+	if (above) a = srcN[above];
+	if (below) a = srcN[below];
+
+	if (a != NULL && a == b) return a;
+	else return NULL;
+}
+
 
 void Lattice::sortIn(edge e){	
 	node v1 = e->source();
@@ -669,7 +1220,11 @@ edge Lattice::getRight(edge e){ //returns the next OUTGOING edge in pos directio
 	
 	while (e_out->source() != w){	
 		loopcount ++;
-		if (loopcount > 10) throw -1;
+		//if (loopcount > 10) throw -1; VERY BAD IDEA IDEA!!!!
+		if (loopcount > 10) {
+			std::cout << "exceeded normal adj limit "<< loopcount << " , node is:" << std::endl;
+			displayNodeInformation(w);
+		}
 		out = out->cyclicSucc();
 		//std::cout << out << std::endl;
 		e_out = out->theEdge();
@@ -709,14 +1264,18 @@ void Lattice::removeLine(IPolyline line){
 				//std::cout << "remove :" << (*it)->index() << " h: " << height[*it] << ": [" << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << "]" << std::endl;
 				if (height[*it] == p1.m_x){
 					if (start[*it] >= a && end[*it] <= b){
-						delFromList.pushFront(it);
+						//delFromList.pushFront(it);
 						node v1 = (*it)->source();
 						node v2 = (*it)->target();
 						//std::cout << "  deleting [" << nodePos[v1] << "->" << nodePos[v2] << "]" << std::endl;
-						delEdge(*it);
+						std::cout << "would delete " << (*it)->index()  << " [" << nodePos[v1] << "->" << nodePos[v2] << "]"<< std::endl;
+						//delEdge(*it);
 						edge e = searchEdge(v1,v2);
+						v1 = e->source();
+						v2 = e->target();
+						std::cout << "would delete " << e->index()  << " [" << nodePos[v1] << "->" << nodePos[v2] << "]"<< std::endl;
 						//std::cout << "  deleting [" << nodePos[e->source()] << "->" << nodePos[e->target()] << "]" << std::endl;
-						delEdge(e);
+						//delEdge(e);
 						if (v1->indeg() + v1->outdeg() == 0) delNode(v1);
 						if (v2->indeg() + v2->outdeg() == 0) delNode(v2);
 						//if (end[*it] >= b) break; doesn't work, List not sorted by start-end !!
@@ -733,19 +1292,23 @@ void Lattice::removeLine(IPolyline line){
 		if (p1.m_y == p2.m_y){ //line is horizontal
 			int a = min(p1.m_x, p2.m_x);
 			int b = max(p1.m_x, p2.m_x);
-		//	std::cout << "hor: " << std::endl;
+			//std::cout << "hor: " << std::endl;
 			forall_nonconst_listiterators(edge, it, hor){
-			//	std::cout << "remove :" << (*it)->index() << " h: " << height[*it] << ": [" << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << "]" << std::endl;
+				//	std::cout << "remove :" << (*it)->index() << " h: " << height[*it] << ": [" << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << "]" << std::endl;
 				if (height[(*it)] == p1.m_y){
 					if (start[*it] >= a && end[*it] <= b){
-						delFromList.pushFront(it);
+						//delFromList.pushFront(it);
 						node v1 = (*it)->source();
 						node v2 = (*it)->target();
 						//std::cout << "  deleting [" << nodePos[v1] << "->" << nodePos[v2] << "]" << std::endl;
-						delEdge(*it);
+						std::cout << "would delete " << (*it)->index()  << " [" << nodePos[v1] << "->" << nodePos[v2] << "]"<< std::endl;
+						//delEdge(*it);
 						edge e = searchEdge(v1,v2);
+						v1 = e->source();
+						v2 = e->target();
+						std::cout << "would delete " << e->index()  << " [" << nodePos[v1] << "->" << nodePos[v2] << "]"<< std::endl;
 						//std::cout << "  deleting [" << nodePos[e->source()] << "->" << nodePos[e->target()] << "]" << std::endl;
-						delEdge(e);
+						//delEdge(e);
 						if (v1->indeg() + v1->outdeg() == 0) delNode(v1);
 						if (v2->indeg() + v2->outdeg() == 0) delNode(v2);
 						/*if (end[*it] >= b) break;*/ //doesn't work, list not sorted by start-end!
@@ -763,8 +1326,528 @@ void Lattice::removeLine(IPolyline line){
 	//	edge e = *it;
 	//	std::cout << "#" << e->index() << " " << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;
 	//}
-	m_pOutline = CalcOutline();
+	//m_pOutline = CalcOutline();
 	//std::cout << "line removed" << std::endl;
+}
+
+void Lattice::removeLine(edge E ){
+	List<edge> line = lineE[E];
+	if (line.empty()) return;	
+	/*std::cout << "del lineE[" << E->index() << "] : ";
+	forall_listiterators(edge,it,lineE[E]) std::cout << (*it)->index() << ", ";
+	std::cout << std::endl;*/
+	edge e;
+	//std::cout << "removing all lines of " << E << std::endl;
+	forall_edges(e,*this){
+		if (srcE[e] == E && line.search(e) == -1){
+			std::cout << "FOUND ROGUE EDGE WHILE ATTEMPTING DELETION!" << std::endl;
+			std::cout << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;
+		}
+	}
+
+	List<ListIterator<edge>> delFromList;
+	forall_nonconst_listiterators(edge, it, vert) if (line.search(*it) != -1) delFromList.pushBack(it);
+	forall_listiterators(ListIterator<edge>,itit,delFromList) vert.del(*itit);
+	delFromList.clear();
+	forall_nonconst_listiterators(edge, it, hor) if (line.search(*it) != -1) delFromList.pushBack(it);
+	forall_listiterators(ListIterator<edge>,itit,delFromList) hor.del(*itit);
+	while(!line.empty()){
+		edge e = line.popFrontRet();
+		node v1 = e->source();
+		node v2 = e->target();
+		
+		//std::cout << "WILL DELETE: " << e->index() << " " << e  << " [" << nodePos[v1] << "->" << nodePos[v2] << "]"<< std::endl;
+		delEdge(e);
+		//std::cout << "checking if v1 " << v1 << " needs to be deleted" << std::endl;
+		if (v1->degree() == 0) delNode(v1);
+		else if (v1->degree() == 4){ //if deletion leaves a line with a node that could be merged, merge it.
+			//std::cout << "blav1" << std::endl;
+			node p = NULL;
+			node q = NULL;
+			adjEntry adj = v1->firstAdj();
+			p = adj->twinNode();
+			edge e1 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e2 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e3 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e4 = adj->theEdge();
+			if (srcN[e1] == srcN[e2] && srcN[e1] == srcN[e3] && srcN[e1] == srcN[e4]){
+				if (srcE[e1] == srcE[e2] && srcE[e1] == srcE[e3] && srcE[e1] == srcE[e4]){
+					if(nodePos[p].m_x == nodePos[q].m_x){ //line is vertical
+						//std::cout << "DELETING PATH NODE src vert" << std::endl;
+						//displayNodeInformation(v1);
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = vert.search(e1);
+						if (s1 != -1)vert.del(vert.get(s1));
+						int s2 = vert.search(e2);
+						if (s2 != -1) vert.del(vert.get(s2));
+						int s3 = vert.search(e3);
+						if (s3 != -1) vert.del(vert.get(s3));
+						int s4 = vert.search(e4);
+						if (s4 != -1) vert.del(vert.get(s4));
+
+						delNode(v1);
+					}
+					if(nodePos[p].m_y == nodePos[q].m_y){ //line is horizontal
+						//std::cout << "DELETING PATH NODE src hor" << std::endl;
+						//displayNodeInformation(v1);
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = hor.search(e1);
+						if (s1 != -1)hor.del(hor.get(s1));
+						int s2 = hor.search(e2);
+						if (s2 != -1) hor.del(hor.get(s2));
+						int s3 = hor.search(e3);
+						if (s3 != -1) hor.del(hor.get(s3));
+						int s4 = hor.search(e4);
+						if (s4 != -1) hor.del(hor.get(s4));
+
+						delNode(v1);
+
+					}
+				}
+			}						
+		}//if deg(v1) == 4
+		
+		//std::cout << "checking if v2 " << v2 << "needs to be deleted" << std::endl;
+
+		if (v2->degree() == 0) delNode(v2);
+		else if (v2->degree() == 4){ //if deletion leaves a line with a node that could be merged, merge it.
+			node p = NULL;
+			node q = NULL;
+			adjEntry adj = v2->firstAdj();
+			p = adj->twinNode();
+			edge e1 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e2 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e3 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e4 = adj->theEdge();
+			if (srcN[e1] == srcN[e2] && srcN[e1] == srcN[e3] && srcN[e1] == srcN[e4]){
+				if (srcE[e1] == srcE[e2] && srcE[e1] == srcE[e3] && srcE[e1] == srcE[e4]){
+					if(nodePos[p].m_x == nodePos[q].m_x){ //line is vertical
+						//std::cout << "DELETING PATH NODE trg vert" << std::endl;
+						//displayNodeInformation(v2);
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = vert.search(e1);
+						if (s1 != -1)vert.del(vert.get(s1));
+						int s2 = vert.search(e2);
+						if (s2 != -1) vert.del(vert.get(s2));
+						int s3 = vert.search(e3);
+						if (s3 != -1) vert.del(vert.get(s3));
+						int s4 = vert.search(e4);
+						if (s4 != -1) vert.del(vert.get(s4));
+
+						delNode(v2);
+					}
+					if(nodePos[p].m_y == nodePos[q].m_y){ //line is horizontal
+						//std::cout << "DELETING PATH NODE trg hor" << std::endl;
+						//displayNodeInformation(v2);
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = hor.search(e1);
+						if (s1 != -1)hor.del(hor.get(s1));
+						int s2 = hor.search(e2);
+						if (s2 != -1) hor.del(hor.get(s2));
+						int s3 = hor.search(e3);
+						if (s3 != -1) hor.del(hor.get(s3));
+						int s4 = hor.search(e4);
+						if (s4 != -1) hor.del(hor.get(s4));
+
+						delNode(v2);
+
+					}
+				}
+			}						
+		}//if deg(v1) == 4
+
+	}
+	//std::cout << "delline e done" << std::endl;
+		forall_edges(e,*this){
+		if (srcE[e] == E){
+			std::cout << "FOUND ROGUE EDGE AFTER ATTEMPTING DELETION!" << std::endl;
+			std::cout << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;
+		}
+	}
+		lineE[E].clear();
+	checkConsistency();
+	//std::cout << "checking done" << std::endl;
+	m_pOutline = CalcOutline();
+	
+
+	//std::cout << "recalced outline" << std::endl;
+
+}
+
+void Lattice::displayNodeInformation(node v){
+	adjEntry adj;
+	std::cout << "At " << nodePos[v] << " node " << v << std::endl;
+	forall_adj(adj,v){
+		edge e = adj->theEdge();
+		node v1 = e->source();
+		node v2 = e->target();
+		std::cout << "edge: "<< e->index() << "  " << nodePos[v1] << e << nodePos[v2] << " sE "<< srcE[e] << " sN "<< srcN[e] << std::endl;
+	}
+}
+
+void Lattice::nodeInfoOn(IPoint p){
+	node v;
+	node w = NULL;
+	forall_nodes(v,*this){
+		if (nodePos[v] == p){			
+			//std::cout << "NODE EXISTS" << std::endl;
+			w = v;
+		}
+	}
+	if (w) displayNodeInformation(w);
+}
+
+void Lattice::removeLine(node N ){
+	List<edge> line = lineN[N];
+	if (line.empty()) return;	
+	//std::cout << "del lineN[" << N->index() << "] : ";
+	//forall_listiterators(edge,it,lineN[N]) std::cout << nodePos[(*it)->source()] << "->" << nodePos[(*it)->target()] << " ; ";
+	//std::cout << std::endl;
+
+	List<ListIterator<edge>> delFromList;
+	forall_nonconst_listiterators(edge, it, vert) if (line.search(*it) != -1) delFromList.pushBack(it);
+	forall_listiterators(ListIterator<edge>,itit,delFromList) vert.del(*itit);
+	delFromList.clear();
+	forall_nonconst_listiterators(edge, it, hor) if (line.search(*it) != -1) delFromList.pushBack(it);
+	forall_listiterators(ListIterator<edge>,itit,delFromList) hor.del(*itit);
+	while(!line.empty()){
+		edge e = line.popFrontRet();
+		node v1 = e->source();
+		node v2 = e->target();
+		//std::cout << "WILL DELETE: " << e->index()  << " [" << nodePos[v1] << "->" << nodePos[v2] << "]"<< std::endl;
+		delEdge(e);
+		if (v1->degree() == 0) delNode(v1);
+		if (v2->degree() == 0) delNode(v2);
+		
+		if (v1->degree() == 4){ //if deletion leaves a line with a node that could be merged, merge it.
+			node p = NULL;
+			node q = NULL;
+			adjEntry adj = v1->firstAdj();
+			p = adj->twinNode();
+			edge e1 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e2 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e3 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e4 = adj->theEdge();
+			if (srcN[e1] == srcN[e2] && srcN[e1] == srcN[e3] && srcN[e1] == srcN[e4]){
+				if (srcE[e1] == srcE[e2] && srcE[e1] == srcE[e3] && srcE[e1] == srcE[e4]){
+					if(nodePos[p].m_x == nodePos[q].m_x){ //line is vertical
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = vert.search(e1);
+						if (s1 != -1)vert.del(vert.get(s1));
+						int s2 = vert.search(e2);
+						if (s2 != -1) vert.del(vert.get(s2));
+						int s3 = vert.search(e3);
+						if (s3 != -1) vert.del(vert.get(s3));
+						int s4 = vert.search(e4);
+						if (s4 != -1) vert.del(vert.get(s4));
+
+						delNode(v1);
+					}
+					if(nodePos[p].m_y == nodePos[q].m_y){ //line is horizontal
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = hor.search(e1);
+						if (s1 != -1)hor.del(hor.get(s1));
+						int s2 = hor.search(e2);
+						if (s2 != -1) hor.del(hor.get(s2));
+						int s3 = hor.search(e3);
+						if (s3 != -1) hor.del(hor.get(s3));
+						int s4 = hor.search(e4);
+						if (s4 != -1) hor.del(hor.get(s4));
+
+						delNode(v1);
+
+					}
+				}
+			}						
+		}//if deg(v1) == 4
+
+		if (v2->degree() == 4){ //if deletion leaves a line with a node that could be merged, merge it.
+			node p = NULL;
+			node q = NULL;
+			adjEntry adj = v2->firstAdj();
+			p = adj->twinNode();
+			edge e1 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e2 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e3 = adj->theEdge();
+			adj = adj->succ();
+			if (adj->twinNode() != p) q = adj->twinNode();
+			edge e4 = adj->theEdge();
+			if (srcN[e1] == srcN[e2] && srcN[e1] == srcN[e3] && srcN[e1] == srcN[e4]){
+				if (srcE[e1] == srcE[e2] && srcE[e1] == srcE[e3] && srcE[e1] == srcE[e4]){
+					if(nodePos[p].m_x == nodePos[q].m_x){ //line is vertical
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = vert.search(e1);
+						if (s1 != -1)vert.del(vert.get(s1));
+						int s2 = vert.search(e2);
+						if (s2 != -1) vert.del(vert.get(s2));
+						int s3 = vert.search(e3);
+						if (s3 != -1) vert.del(vert.get(s3));
+						int s4 = vert.search(e4);
+						if (s4 != -1) vert.del(vert.get(s4));
+
+						delNode(v2);
+					}
+					if(nodePos[p].m_y == nodePos[q].m_y){ //line is horizontal
+						edge sE = srcE[e1];
+						node sN = srcN[e1];
+						edge ne1 = connect (p,q);
+						sortIn(ne1);
+						edge ne2 = connect (q,p);
+						
+						srcE[ne1] = sE;
+						srcN[ne1] = sN;
+						srcE[ne2] = sE;
+						srcN[ne2] = sN;
+
+						if (sN){
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e1)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e2)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e3)));
+							lineN[sN].del(lineN[sN].get(lineN[sN].search(e4)));
+							lineN[sN].pushBack(ne1);
+							lineN[sN].pushBack(ne2);
+						}
+						if (sE){
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e1)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e2)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e3)));
+							lineE[sE].del(lineE[sE].get(lineE[sE].search(e4)));
+							lineE[sE].pushBack(ne1);
+							lineE[sE].pushBack(ne2);
+						}
+
+						int s1 = hor.search(e1);
+						if (s1 != -1)hor.del(hor.get(s1));
+						int s2 = hor.search(e2);
+						if (s2 != -1) hor.del(hor.get(s2));
+						int s3 = hor.search(e3);
+						if (s3 != -1) hor.del(hor.get(s3));
+						int s4 = hor.search(e4);
+						if (s4 != -1) hor.del(hor.get(s4));
+
+						delNode(v2);
+
+					}
+				}
+			}						
+		}//if deg(v1) == 4
+
+	}
+	checkConsistency();
+	m_pOutline = CalcOutline();
+	lineN[N].clear();
 }
 IPolyline Lattice::outline(){
 	return m_pOutline;
@@ -797,17 +1880,103 @@ IPolyline Lattice::CalcOutline(){
 	tempPos.m_y += 1;
 	node tempNode = getNode(tempPos);
 	edge tempEdge = connect(tempNode, w);	
-	edge e = getRight(tempEdge);
-	edge firstEdge = e;	
-	ret.pushBack(nodePos[e->source()]);
-	ret.pushBack(nodePos[e->target()]);
-	e = getRight(e);	
-	while(e != firstEdge){
-		ret.pushBack(nodePos[e->target()]);
-		e = getRight(e);
-	}
 
+		//std::cout << "			TEMPEDGE edge " << tempEdge->index() << std::endl;
+		
+	edge e = getRight(tempEdge);
+	//std::cout << "adding source of " << e->index() << " " << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;		
+	ret.pushBack(nodePos[e->source()]);
+	//std::cout << "adding target of " << e->index() << " " << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;		
+	ret.pushBack(nodePos[e->target()]);
+	edge firstEdge = e;		
+	e = getRight(e);	
+	
+	bool strikeOne = false;
+	while(e != firstEdge){
+		//std::cout << e->index() << " " << e->source() << "-" << e->target() << " is part of outine" << std::endl;		
+		//ret.pushBack(nodePos[e->target()]);
+		//std::cout <<  "loop" << std::endl;
+		//std::cout << "adding target of " << e->index() << " " << nodePos[e->source()] << "->" << nodePos[e->target()] << std::endl;		
+		if (e->index() == 1095){
+			//std::cout << "bubu" << std::endl;
+			if (strikeOne){
+				ret.clear();
+				ret.pushBack(IPoint(0,0));				
+				return ret;
+			}
+			strikeOne = true;
+			
+		}
+		ret.pushBack(nodePos[e->target()]);
+		//std::cout << "adding target of " << e->index() << " " << nodePos[e->source()] << "->" << nodePos[e->target()] << "done" << std::endl;		
+		//debug
+		edge prev = e;
+		e = getRight(e);
+		//std::cout<< "got next edge" << std::endl;
+		/*if (prev == e){
+			std::cout << "error" << std::endl;
+		}*/
+	}
+	//std::cout << "done recalcing" << std::endl;
 	delNode(tempNode);
 
 	return ret;
+}
+
+void Lattice::getConnectedElements(edge E, List<edge> &edges, List<node> &nodes){
+	List<edge> line = lineE[E];
+	edges.clear();
+	nodes.clear();
+	if (line.empty()) return;
+
+	forall_listiterators(edge, it, line){
+		node v = (*it)->source();
+		edge e;
+		forall_adj_edges(e,v){
+			edge sE = srcE[e];
+			node sN = srcN[e];
+			if (sE != E){
+				if (sE != NULL && edges.search(sE) == -1) edges.pushBack(sE);
+				if (sN != NULL && nodes.search(sN) == -1) nodes.pushBack(sN);
+			}
+		}
+		v = (*it)->target();
+		forall_adj_edges(e,v){
+			edge sE = srcE[e];
+			node sN = srcN[e];
+			if (sE != E){
+				if (sE != NULL && edges.search(sE) == -1) edges.pushBack(sE);
+				if (sN != NULL && nodes.search(sN) == -1) nodes.pushBack(sN);
+			}
+		}
+	}
+}
+
+void Lattice::getConnectedElements(node N, List<edge> &edges, List<node> &nodes){
+	List<edge> line = lineN[N];
+	edges.clear();
+	nodes.clear();
+	if (line.empty()) return;
+
+	forall_listiterators(edge, it, line){
+		node v = (*it)->source();
+		edge e;
+		forall_adj_edges(e,v){
+			edge sE = srcE[e];
+			node sN = srcN[e];
+			if (sN != N){
+				if (sE != NULL && edges.search(sE) == -1) edges.pushBack(sE);
+				if (sN != NULL && nodes.search(sN) == -1) nodes.pushBack(sN);
+			}
+		}
+		v = (*it)->target();
+		forall_adj_edges(e,v){
+			edge sE = srcE[e];
+			node sN = srcN[e];
+			if (sN != N){
+				if (sE != NULL && edges.search(sE) == -1) edges.pushBack(sE);
+				if (sN != NULL && nodes.search(sN) == -1) nodes.pushBack(sN);
+			}
+		}
+	}
 }
