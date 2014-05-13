@@ -854,9 +854,9 @@ void GridGraph::moveToCluster(List<node> nodes, node V){
 		node vc = e->source();
 		node connect = e->target();
 		
-		//std::cout << "original edges in moveToClsuter for edge " << e->index() <<std::endl;
-		//forall_listiterators(edge, it ,GG.original(e)) std::cout << *it << std::endl; 
-		//std::cout << std::endl;
+		std::cout << "original edges in moveToClsuter for edge " << e->index() <<std::endl;
+		forall_listiterators(edge, it ,GG.original(e)) std::cout << *it << std::endl; 
+		std::cout << std::endl;
 
 		edge adjE = Copy(GG.original(e).front()); //e is not a new edge so srcCopy wont work
 		std::cout << adjE << std::endl;
@@ -1041,6 +1041,91 @@ void GridGraph::moveToCluster(List<node> nodes, node V){
 	
 
 	//this concludes moveToCluster
+	
+}
+
+List<node> GridGraph::dissolveCluster(node OldNode){
+	m_IOprep = false;
+	List<node> newNodes;
+	if (subGG(OldNode) == NULL){
+		newNodes.pushFront(OldNode);
+		return newNodes;
+	}
+	GridGraph &GG = *subGG(OldNode);
+	IPoint OldPos = getPos(OldNode);
+	NodeArray<node> vSrcCopy(*this,NULL);
+	NodeArray<node> vTrgCopy(GG,NULL);
+	//EdgeArray<edge> eSrcCopy(*this,NULL);
+	//EdgeArray<edge> eTrgCopy(GG,NULL);
+
+	removeFromLattice(OldNode);
+	edge e;
+	forall_adj_edges(e,OldNode){
+		removeFromLattice(e);
+		//removeFromGrid(e);
+	}
+	
+	//add all relevant nodes + info;
+	forall_listiterators(node, it, GG.nonDummyNodes()){
+		node v = *it;
+		node w = addNode();
+
+		newNodes.pushFront(w);
+		vSrcCopy[w] = v;
+		vTrgCopy[v] = w;
+
+		m_vOrig[w] = GG.m_vOrig[v];
+		forall_listiterators(node, it, m_vOrig[w]){
+			m_vCopy[*it] = w;
+		}
+
+		m_vGridGraph[w] = GG.m_vGridGraph[v];
+		m_x[w] = GG.m_x[v] + OldPos.m_x;
+		m_y[w] = GG.m_y[v] + OldPos.m_y;
+		m_vRotation[w] = GG.m_vRotation[v];
+		m_vXMirror[w] = GG.m_vXMirror[v];
+		m_vYMirror[w] = GG.m_vYMirror[v];		
+		
+		addToLattice(w);
+		//addToGrid(w);
+	}	
+
+	//add all non-outgoing edges + info;
+	//edge e;
+	forall_edges(e,GG){
+		if (GG.isDummy(e->target())) continue;
+		node w1 = vTrgCopy[e->source()];
+		node w2 = vTrgCopy[e->target()];
+		edge f = newEdge(w1,w2);
+		m_edgeline[f] = translate(GG.m_edgeline[e], OldPos);
+		m_eSpaces[f] = GG.m_eSpaces[e];
+		m_eOrig[f] = GG.m_eOrig[e];
+		forall_listiterators(edge, it, m_eOrig[f]){
+			m_eCopy[*it] = f;
+		}
+		addToLattice(f);
+		//addToGrid(f);
+	}
+
+	//add all outgoing edges + info;
+	forall_listiterators(edge,it,GG.m_eOutgoing){
+		edge e = *it;
+		edge f = Copy(GG.original(e).front());
+		if (f->source() == OldNode){
+			moveSource(f,vTrgCopy[e->source()]);
+		}else{
+			if (f->target() != OldNode) while (true) std::cout << "something went wrong" << std::endl;
+			moveTarget(f,vTrgCopy[e->source()]);
+		}
+		m_eSpaces[f] += GG.m_eSpaces[e];
+		m_edgeline[f] = combineLines(m_edgeline[f],GG.m_edgeline[e]);				
+		
+		addToLattice(f);
+		//addToGrid();
+	}
+
+	removeNode(OldNode);
+	return newNodes;
 	
 }
 
@@ -1565,6 +1650,58 @@ void GridGraph::contract(){ // This will break if GridGraph is a cycle, but that
 	}
 }
 
+IPolyline GridGraph::combineLines(IPolyline l1, IPolyline l2){
+
+	if (l1.empty()) return l2;
+	if (l2.empty()) return l1;
+
+	IPoint pos(0,0);
+	if (l1.back() == l2.back()) pos = l1.back();
+	if (l1.back() == l2.front()) pos = l1.back();
+	if (l1.front() == l2.back()) pos = l1.front();
+	if (l1.front() == l2.front()) pos = l1.front();
+
+	if (pos == l1.back() && pos == l2.front()){		
+		l2.popFront();
+		l1.popBack();
+		IPoint p1, p2;
+		p1 = l2.front();
+		p2 = l1.back();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) l1.pushBack(pos);
+		l1.conc(l2);		
+	}else if (pos == l2.back() && pos == l1.front()){				
+		l2.popBack();
+		l1.popFront();
+		IPoint p1, p2;
+		p1 = l2.back();
+		p2 = l1.front();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) l1.pushFront(pos);		
+		l1.concFront(l2);				
+	}else if (pos == l1.back() && pos == l2.back()){		
+		l2.popBack();
+		l1.popBack();
+		IPoint p1, p2;
+		p1 = l2.back();
+		p2 = l1.back();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) l1.pushBack(pos);		
+		while (!l2.empty()){
+			l1.pushBack(l2.popBackRet());
+		}		
+	}else if (pos == l1.front() && pos == l2.front()){		
+		l2.popFront();
+		l1.popFront();
+		IPoint p1, p2;
+		p1 = l2.front();
+		p2 = l1.front();
+		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) l1.pushFront(pos);
+
+		while (!l2.empty()){
+			l1.pushFront(l2.popFrontRet());
+		}				
+	}
+	return l1;
+}
+
 edge GridGraph::contract(node v){
 	//unsplit removes outgoing edge and reroutes incoming edge;
 	
@@ -1588,49 +1725,12 @@ edge GridGraph::contract(node v){
 	m_eSpaces[e] += out_eSpaces;
 	m_eOrig[e].conc(out_eOrig); //this keeps the ordering of front = source back=target of orig list
 
-	if (out_edgeline.empty()) return e;
-	if (m_edgeline[e].empty()){
-		m_edgeline[e] = out_edgeline;
-		return e;
-	}
-	if (pos == m_edgeline[e].back() && pos == out_edgeline.front()){		
-		out_edgeline.popFront();
-		m_edgeline[e].popBack();
-		IPoint p1, p2;
-		p1 = out_edgeline.front();
-		p2 = m_edgeline[e].back();
-		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushBack(pos);
-		m_edgeline[e].conc(out_edgeline);		
-	}else if (pos == out_edgeline.back() && pos == m_edgeline[e].front()){				
-		out_edgeline.popBack();
-		m_edgeline[e].popFront();
-		IPoint p1, p2;
-		p1 = out_edgeline.back();
-		p2 = m_edgeline[e].front();
-		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushFront(pos);		
-		m_edgeline[e].concFront(out_edgeline);				
-	}else if (pos == m_edgeline[e].back() && pos == out_edgeline.back()){		
-		out_edgeline.popBack();
-		m_edgeline[e].popBack();
-		IPoint p1, p2;
-		p1 = out_edgeline.back();
-		p2 = m_edgeline[e].back();
-		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushBack(pos);		
-		while (!out_edgeline.empty()){
-			m_edgeline[e].pushBack(out_edgeline.popBackRet());
-		}		
-	}else if (pos == m_edgeline[e].front() && pos == out_edgeline.front()){		
-		out_edgeline.popFront();
-		m_edgeline[e].popFront();
-		IPoint p1, p2;
-		p1 = out_edgeline.front();
-		p2 = m_edgeline[e].front();
-		if (p1.m_x != p2.m_x && p1.m_y != p2.m_y) m_edgeline[e].pushFront(pos);
-
-		while (!out_edgeline.empty()){
-			m_edgeline[e].pushFront(out_edgeline.popFrontRet());
-		}				
-	}
+	//if (out_edgeline.empty()) return e;
+	//if (m_edgeline[e].empty()){
+	//	m_edgeline[e] = out_edgeline;
+	//	return e;
+	//}
+	m_edgeline[e] = combineLines(m_edgeline[e], out_edgeline);
 	return e;	
 
 }

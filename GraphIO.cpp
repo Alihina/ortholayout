@@ -1134,7 +1134,7 @@ void GraphIO::OnKeydown(){
 		case SDLK_e:
 			forall_listiterators(node,it,selNodes){
 				//std::cout << "eviscerating selNode" << std::endl;
-				activeGG->eviscerate(*it);
+				activeGG->dissolveCluster(*it);
 			}
 			clearSelection();
 			break;

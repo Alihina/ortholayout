@@ -112,6 +112,7 @@ protected:
 	void findCluster(node v, int p); 
 	List<node> findClusterRecurse(List<node> cluster, int p);
 	edge contract(node v); //joins two edges on node v assuming indeg(v) = outdeg(v) = 1
+	IPolyline combineLines(IPolyline l1, IPolyline l2);
 	IPolyline translate(IPolyline line, IPoint p);
 	void recalcOutgoing(); //
 
@@ -125,6 +126,7 @@ public:
 
 
 	void eviscerate(node v); //if v is a cluster, delete the cluster and add all contents to this GG
+	List<node> dissolveCluster(node OldNode); //dissolves cluster, returns list of new nodes
 	void contract(); //turns all paths into single edges.
 	//List<node> GridGraph::trimCluster(List<node> U, node v);
 	//List<node> &nonDummyNodes(){return m_nonDummy;}
